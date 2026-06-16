@@ -1,0 +1,244 @@
+<% layout('layouts/main') -%>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0">Cashier Balancing</h4>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+        <form method="GET" action="/cashier-balancing" class="row g-3">
+            <div class="col-12 col-md-4">
+                <label class="form-label text-muted small fw-bold text-uppercase mb-1">Date</label>
+                <input type="date" class="form-control bg-light border-0" name="date" value="<%= filters.date %>" required>
+            </div>
+            <div class="col-12 col-md-5">
+                <label class="form-label text-muted small fw-bold text-uppercase mb-1">Cashier (Sales Agent)</label>
+                <select class="form-select bg-light border-0" name="agent" required>
+                    <option value="" disabled <%= !filters.agent ? 'selected' : '' %>>Select Cashier...</option>
+                    <% agents.forEach(a => { %>
+                        <option value="<%= a.id %>" <%= String(filters.agent) === String(a.id) ? 'selected' : '' %>><%= a.full_name %> (<%= a.username %>)</option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="col-12 col-md-3 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-primary w-100 fw-medium shadow-sm">Load Details</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<% if (balancingData) { %>
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-xl-6 mx-auto">
+            <div class="card border-0 shadow-sm rounded-4 override-shadow h-100">
+                <div class="card-header bg-white border-bottom p-4 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0">Balancing Summary</h5>
+                    <span class="badge bg-light text-dark border px-3 py-2 fs-6">
+                        <%= balancingData.selectedAgentName %> <br/>
+                        <small class="text-muted"><%= new Date(filters.date).toLocaleDateString() %></small>
+                    </span>
+                </div>
+                <div class="card-body p-4">
+                    
+                    <% if (balancingData.alreadyBalanced) { %>
+                        <!-- Already Balanced State -->
+                        <div class="alert alert-success d-flex align-items-center mb-4 border-0">
+                            <i class="bi bi-check-circle-fill fs-3 me-3"></i>
+                            <div>
+                                <strong class="d-block mb-1">Already Balanced</strong>
+                                Approved by <%= balancingData.alreadyBalanced.manager_name %> on <%= new Date(balancingData.alreadyBalanced.created_at).toLocaleString() %>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <p class="text-muted small fw-bold text-uppercase mb-1">System Total</p>
+                                <h4 class="font-monospace fw-bold text-dark mb-0">UGX <%= parseFloat(balancingData.alreadyBalanced.expected_amount).toLocaleString() %></h4>
+                            </div>
+                            <div class="col-6">
+                                <p class="text-muted small fw-bold text-uppercase mb-1">Submitted Amount</p>
+                                <h4 class="font-monospace fw-bold text-dark mb-0">UGX <%= parseFloat(balancingData.alreadyBalanced.actual_amount).toLocaleString() %></h4>
+                            </div>
+                        </div>
+                        
+                        <% 
+                            const variance = parseFloat(balancingData.alreadyBalanced.variance_amount);
+                        %>
+                        <div class="mb-4">
+                            <p class="text-muted small fw-bold text-uppercase mb-1">Variance</p>
+                            <% if (variance === 0) { %>
+                                <h4 class="font-monospace fw-bold text-success mb-0"><i class="bi bi-check-lg me-1"></i>0 (Balanced)</h4>
+                            <% } else if (variance > 0) { %>
+                                <h4 class="font-monospace fw-bold text-primary mb-0"><i class="bi bi-info-circle me-1"></i>Overage: UGX <%= variance.toLocaleString() %></h4>
+                            <% } else { %>
+                                <h4 class="font-monospace fw-bold text-danger mb-0"><i class="bi bi-exclamation-triangle me-1"></i>Shortage: UGX <%= Math.abs(variance).toLocaleString() %></h4>
+                            <% } %>
+                        </div>
+                        
+                        <% if (balancingData.alreadyBalanced.notes) { %>
+                            <div>
+                                <p class="text-muted small fw-bold text-uppercase mb-1">Manager Notes</p>
+                                <div class="bg-light p-3 rounded text-muted">
+                                    <%= balancingData.alreadyBalanced.notes %>
+                                </div>
+                            </div>
+                        <% } %>
+                        
+                    <% } else { %>
+                        <!-- Not yet balanced State -->
+                        <form action="/cashier-balancing/approve" method="POST">
+                            <input type="hidden" name="agentId" value="<%= filters.agent %>">
+                            <input type="hidden" name="balanceDate" value="<%= filters.date %>">
+                            
+                            <div class="mb-4 text-center p-3 bg-light rounded-3 border">
+                                <p class="text-muted small fw-bold text-uppercase mb-1">System Total</p>
+                                <h2 class="font-monospace fw-bold text-dark mb-0">UGX <span id="sysTotal" data-val="<%= balancingData.systemTotal %>"><%= parseFloat(balancingData.systemTotal).toLocaleString() %></span></h2>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label text-muted small fw-bold text-uppercase">Submitted Amount (UGX) <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control form-control-lg font-monospace fw-bold text-center" name="submittedAmount" id="submittedAmount" placeholder="0" required min="0" step="1">
+                            </div>
+                            
+                            <div class="mb-4 text-center rounded p-3" id="varianceContainer" style="display:none;">
+                                <p class="text-muted small fw-bold text-uppercase mb-1">Variance</p>
+                                <h4 class="font-monospace fw-bold mb-0" id="varianceDisplay"></h4>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label text-muted small fw-bold text-uppercase">Manager Notes</label>
+                                <textarea class="form-control" name="notes" id="managerNotes" rows="3" placeholder="Explain the variance or add any observations..."></textarea>
+                                <div class="form-text text-danger d-none" id="notesRequiredWarning">Notes are required when there is a variance.</div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-success btn-lg w-100 fw-bold shadow-sm" id="approveBtn" disabled>
+                                <i class="bi bi-check-circle me-2"></i> Approve & Close Balance
+                            </button>
+                        </form>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-5">
+        <div class="card-header bg-white border-bottom p-4">
+            <h5 class="fw-bold mb-0">Sales Breakdown (<%= filters.date %>)</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4 py-3 text-uppercase small text-muted fw-bold">Time</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold">Sale #</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-center">Items</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-end">Total Amount</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-end">Paid Amount</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-center pe-4">Receipt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% if(balancingData.sales && balancingData.sales.length > 0) { %>
+                            <% balancingData.sales.forEach(sale => { %>
+                                <tr>
+                                    <td class="ps-4 text-muted small fw-medium text-dark"><%= new Date(sale.sale_date).toLocaleTimeString() %></td>
+                                    <td class="fw-bold font-monospace text-dark">TRX-<%= String(sale.id).padStart(6, '0') %></td>
+                                    <td class="text-center"><span class="badge bg-light text-dark border px-2 py-1"><%= sale.items_count %></span></td>
+                                    <td class="text-end fw-bold text-dark font-monospace">UGX <%= parseFloat(sale.total_amount).toLocaleString() %></td>
+                                    <td class="text-end text-success font-monospace small">UGX <%= parseFloat(sale.amount_paid).toLocaleString() %></td>
+                                    <td class="text-center pe-4">
+                                        <a href="/receipts/<%= sale.id %>" target="_blank" class="btn btn-sm btn-light border rounded text-primary" title="View Receipt">
+                                            <i class="bi bi-box-arrow-up-right"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="6" class="text-center py-5 text-muted">
+                                    <h6 class="fw-bold text-dark">No sales records for this date</h6>
+                                </td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <td colspan="3" class="ps-4 py-3 fw-bold text-uppercase text-end">System Total:</td>
+                            <td class="py-3 text-end fw-bold text-dark font-monospace h5 mb-0 border-top-2">UGX <%= parseFloat(balancingData.systemTotal).toLocaleString() %></td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+<% } %>
+
+<% block('scripts', `
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const subInput = document.getElementById('submittedAmount');
+        if (!subInput) return; // not in edit mode
+        
+        const sysValStr = document.getElementById('sysTotal').getAttribute('data-val');
+        const sysTotal = parseFloat(sysValStr) || 0;
+        
+        const varContainer = document.getElementById('varianceContainer');
+        const varDisplay = document.getElementById('varianceDisplay');
+        const appBtn = document.getElementById('approveBtn');
+        const notesInput = document.getElementById('managerNotes');
+        const notesWarning = document.getElementById('notesRequiredWarning');
+        
+        function updateVariance() {
+            const val = parseFloat(subInput.value);
+            if (isNaN(val)) {
+                varContainer.style.display = 'none';
+                appBtn.disabled = true;
+                notesWarning.classList.add('d-none');
+                return;
+            }
+            
+            varContainer.style.display = 'block';
+            const variance = val - sysTotal;
+            
+            varContainer.className = 'mb-4 text-center rounded p-3 ' + 
+                (variance === 0 ? 'bg-success-light border border-success border-opacity-25' : 
+                (variance > 0 ? 'bg-primary-light border border-primary border-opacity-25' : 
+                                'bg-danger-light border border-danger border-opacity-25'));
+                
+            let varText = '';
+            let valid = true;
+            if (variance === 0) {
+                varText = '<i class="bi bi-check-lg me-1"></i>0 (Balanced)';
+                varDisplay.className = 'font-monospace fw-bold mb-0 text-success';
+                notesWarning.classList.add('d-none');
+            } else if (variance > 0) {
+                varText = '<i class="bi bi-info-circle me-1"></i>Overage: UGX ' + variance.toLocaleString();
+                varDisplay.className = 'font-monospace fw-bold mb-0 text-primary';
+                if (!notesInput.value.trim()) {
+                    valid = false;
+                    notesWarning.classList.remove('d-none');
+                } else {
+                    notesWarning.classList.add('d-none');
+                }
+            } else {
+                varText = '<i class="bi bi-exclamation-triangle me-1"></i>Shortage: UGX ' + Math.abs(variance).toLocaleString();
+                varDisplay.className = 'font-monospace fw-bold mb-0 text-danger';
+                if (!notesInput.value.trim()) {
+                    valid = false;
+                    notesWarning.classList.remove('d-none');
+                } else {
+                    notesWarning.classList.add('d-none');
+                }
+            }
+            
+            varDisplay.innerHTML = varText;
+            appBtn.disabled = !valid;
+        }
+        
+        subInput.addEventListener('input', updateVariance);
+        notesInput.addEventListener('input', updateVariance);
+    });
+</script>
+`) %>

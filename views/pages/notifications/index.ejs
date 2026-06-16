@@ -1,0 +1,117 @@
+<% layout('layouts/main') -%>
+
+<% block('scripts', `
+<script>
+    function markAsRead(id) {
+        fetch('/notifications/' + id + '/read', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const card = document.getElementById('notif-' + id);
+                card.classList.remove('bg-primary', 'bg-opacity-10');
+                card.classList.add('bg-white');
+                const btn = document.getElementById('btn-read-' + id);
+                if (btn) {
+                    btn.outerHTML = '<span class="badge bg-light text-muted border px-2 py-1"><i class="bi bi-check2-all me-1"></i>Read</span>';
+                }
+                updateUnreadCount();
+            }
+        });
+    }
+
+    function updateUnreadCount() {
+        const countBadge = document.getElementById('topbar-notif-count');
+        if (countBadge) {
+            let current = parseInt(countBadge.innerText) || 0;
+            if (current > 1) {
+                countBadge.innerText = current - 1;
+            } else {
+                countBadge.style.display = 'none';
+            }
+        }
+    }
+</script>
+`) %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0">Notifications</h4>
+    <% if (unreadCount > 0) { %>
+        <form action="/notifications/read-all" method="POST" class="m-0">
+            <button type="submit" class="btn btn-outline-primary btn-sm fw-medium shadow-sm">
+                <i class="bi bi-check2-all me-1"></i> Mark all as read
+            </button>
+        </form>
+    <% } %>
+</div>
+
+<div class="mb-4">
+    <a href="/notifications?type=All" class="btn btn-sm rounded-pill fw-medium px-3 me-2 <%= filterType === 'All' ? 'btn-dark' : 'btn-light border text-muted' %>">All</a>
+    <a href="/notifications?type=Unread" class="btn btn-sm rounded-pill fw-medium px-3 me-2 <%= filterType === 'Unread' ? 'btn-dark' : 'btn-light border text-muted' %>">Unread <span class="badge bg-danger ms-1 rounded-pill"><%= unreadCount > 0 ? unreadCount : '' %></span></a>
+    <a href="/notifications?type=LOW_STOCK" class="btn btn-sm rounded-pill fw-medium px-3 me-2 <%= filterType === 'LOW_STOCK' ? 'btn-dark' : 'btn-light border text-muted' %>">Low Stock</a>
+    <a href="/notifications?type=OUT_OF_STOCK" class="btn btn-sm rounded-pill fw-medium px-3 me-2 <%= filterType === 'OUT_OF_STOCK' ? 'btn-dark' : 'btn-light border text-muted' %>">Out of Stock</a>
+    <a href="/notifications?type=CASHIER_VARIANCE" class="btn btn-sm rounded-pill fw-medium px-3 me-2 <%= filterType === 'CASHIER_VARIANCE' ? 'btn-dark' : 'btn-light border text-muted' %>">Cashier Variance</a>
+</div>
+
+<div class="row">
+    <div class="col-12 col-xl-8">
+        <% if (notifications.length === 0) { %>
+            <div class="card border-0 shadow-sm rounded-4 text-center py-5">
+                <div class="card-body">
+                    <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex justify-content-center align-items-center mb-3" style="width: 80px; height: 80px;">
+                        <i class="bi bi-check-circle-fill text-success fs-1"></i>
+                    </div>
+                    <h5 class="fw-bold text-dark">All caught up!</h5>
+                    <p class="text-muted mb-0">You have no matching notifications right now.</p>
+                </div>
+            </div>
+        <% } else { %>
+            <div class="d-flex flex-column gap-3">
+            <% notifications.forEach(n => { 
+                let iconClass = 'bi-bell-fill text-primary';
+                let iconBg = 'bg-primary bg-opacity-10';
+                if (n.type === 'LOW_STOCK') {
+                    iconClass = 'bi-exclamation-triangle-fill text-warning';
+                    iconBg = 'bg-warning bg-opacity-10';
+                } else if (n.type === 'OUT_OF_STOCK') {
+                    iconClass = 'bi-x-circle-fill text-danger';
+                    iconBg = 'bg-danger bg-opacity-10';
+                } else if (n.type === 'CASHIER_VARIANCE') {
+                    iconClass = 'bi-info-circle-fill text-info';
+                    iconBg = 'bg-info bg-opacity-10';
+                }
+            %>
+                <div class="card border-0 shadow-sm rounded-4 transition-all <%= n.is_read ? 'bg-white' : 'bg-primary bg-opacity-10' %>" id="notif-<%= n.id %>">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="rounded-circle d-flex justify-content-center align-items-center flex-shrink-0" style="width: 48px; height: 48px; <%= n.is_read ? '' : 'background-color: white;' %>" class="<%= iconBg %>">
+                                <i class="bi <%= iconClass %> fs-4"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <h6 class="fw-bold mb-1 text-dark" style="line-height: 1.4;"><%= n.message %></h6>
+                                    <div class="ms-3 flex-shrink-0">
+                                        <% if (!n.is_read) { %>
+                                            <button id="btn-read-<%= n.id %>" onclick="markAsRead(<%= n.id %>)" class="btn btn-sm btn-white border shadow-sm rounded-pill text-primary fw-medium" title="Mark as read">
+                                                <i class="bi bi-check2"></i> Mark Read
+                                            </button>
+                                        <% } else { %>
+                                            <span class="badge bg-light text-muted border px-2 py-1"><i class="bi bi-check2-all me-1"></i>Read</span>
+                                        <% } %>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-3 mt-2">
+                                    <span class="text-muted small fw-medium"><i class="bi bi-clock me-1"></i><%= n.time_ago %></span>
+                                    <span class="badge bg-light text-muted border"><%= n.type.replace(/_/g, ' ') %></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <% }) %>
+            </div>
+        <% } %>
+    </div>
+</div>

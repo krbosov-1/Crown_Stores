@@ -1,0 +1,62 @@
+<% layout('layouts/main') -%>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0">Categories</h4>
+    <a href="/categories/new" class="btn btn-primary d-flex align-items-center gap-2">
+        <i class="bi bi-plus-lg"></i> Add Category
+    </a>
+</div>
+
+<% if(categories && categories.length > 0) { %>
+    <div class="row g-4 mb-4">
+        <% categories.forEach(category => { %>
+            <div class="col-12 col-md-6 col-xl-4">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h5 class="card-title fw-bold text-truncate mb-0" style="max-width: 70%;"><%= category.name %></h5>
+                            <% if(category.status === 'active') { %>
+                                <span class="badge bg-success-light text-success fw-medium px-2 py-1">Active</span>
+                            <% } else { %>
+                                <span class="badge bg-danger-light text-danger fw-medium px-2 py-1">Inactive</span>
+                            <% } %>
+                        </div>
+                        <p class="card-text text-muted small mb-4" style="min-height: 40px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                            <%= category.description || 'No description provided.' %>
+                        </p>
+                        
+                        <div class="d-flex justify-content-between align-items-center pt-3 border-top border-light">
+                            <span class="badge bg-secondary-light text-secondary d-flex align-items-center gap-1">
+                                <i class="bi bi-box-seam"></i> <%= category.product_count %> Products
+                            </span>
+                            
+                            <div class="btn-group">
+                                <a href="/categories/<%= category.id %>/edit" class="btn btn-sm btn-outline-primary shadow-sm" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form action="/categories/<%= category.id %>/toggle" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm shadow-sm <%= category.status === 'active' ? 'btn-outline-danger' : 'btn-outline-success' %>" title="<%= category.status === 'active' ? 'Deactivate' : 'Activate' %>">
+                                        <i class="bi <%= category.status === 'active' ? 'bi-dash-circle' : 'bi-plus-circle' %>"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <% }) %>
+    </div>
+<% } else { %>
+    <div class="card shadow-sm border-0">
+        <div class="card-body text-center py-5">
+            <div class="bg-light rounded-circle d-inline-flex justify-content-center align-items-center mb-4" style="width: 80px; height: 80px;">
+                <i class="bi bi-tags fs-1 text-muted"></i>
+            </div>
+            <h5 class="fw-bold mb-2">No categories found</h5>
+            <p class="text-muted mb-4 max-w-sm mx-auto">Get started by creating your first product category. This will help organize your inventory beautifully.</p>
+            <a href="/categories/new" class="btn btn-primary d-inline-flex align-items-center gap-2 px-4 py-2 fw-medium">
+                <i class="bi bi-plus-lg"></i> Add Category
+            </a>
+        </div>
+    </div>
+<% } %>

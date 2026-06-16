@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> - Crown Stores</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Custom CSS variables from main setup -->
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        body {
+            background-color: var(--color-bg);
+            overflow: hidden; /* Prevent body scroll */
+            font-family: "Plus Jakarta Sans", sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .pos-header {
+            background-color: var(--color-surface);
+            border-bottom: 1px solid var(--color-border);
+            height: 64px;
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .pos-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            padding: 24px;
+            gap: 24px;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Left Panel */
+        .pos-left {
+            width: 58%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            height: 100%;
+        }
+
+        .product-search-area {
+            background: var(--color-surface);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--color-surface);
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--color-border);
+            border-top: none;
+            display: none;
+        }
+        .search-results.active {
+            display: block;
+        }
+
+        .cart-area {
+            background: var(--color-surface);
+            border-radius: 12px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .cart-table-wrapper {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 20px;
+        }
+
+        /* Right Panel */
+        .pos-right {
+            width: 42%;
+            background: var(--color-surface);
+            border-radius: 12px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .summary-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--color-border);
+            flex-shrink: 0;
+        }
+
+        .line-items {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .checkout-area {
+            padding: 20px;
+            background: var(--color-bg);
+            border-top: 1px solid var(--color-border);
+            flex-shrink: 0;
+        }
+
+        .qty-control {
+            display: flex;
+            align-items: center;
+            width: 110px;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .qty-btn {
+            background: var(--color-bg);
+            border: none;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--color-text);
+            font-weight: bold;
+        }
+
+        .qty-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #f1f5f9;
+        }
+
+        .qty-input {
+            width: 46px;
+            height: 32px;
+            border: none;
+            border-left: 1px solid var(--color-border);
+            border-right: 1px solid var(--color-border);
+            text-align: center;
+            font-weight: bold;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        
+        .qty-input:focus {
+            outline: none;
+        }
+
+        /* Custom Scrollbar for panels */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        .total-row {
+            font-size: 2rem;
+            color: var(--color-primary);
+        }
+
+        /* Toast container */
+        #toastContainer {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="pos-header">
+        <div class="d-flex align-items-center me-auto gap-3">
+            <h4 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                <div class="bg-primary text-white rounded p-1 d-flex align-items-center justify-content-center" style="width:32px; height:32px;">
+                    <i class="bi bi-shop fs-5"></i>
+                </div>
+                Crown POS
+            </h4>
+            <div class="border-start ps-3 ms-1 text-muted small fw-medium text-uppercase d-none d-md-block">
+                Branch: <span class="text-dark fw-bold"><%= user.branch_name || 'Main Branch' %></span>
+            </div>
+        </div>
+        
+        <div class="d-flex align-items-center gap-4">
+            <div class="text-end d-none d-sm-block">
+                <div class="small fw-bold text-dark"><%= user.full_name %></div>
+                <div class="small text-muted" style="font-size: 0.75rem;">Cashier / Agent</div>
+            </div>
+            <a href="/sales" class="btn btn-sm btn-outline-danger shadow-sm fw-medium rounded-pill px-3">
+                <i class="bi bi-box-arrow-left me-1"></i> Exit POS
+            </a>
+        </div>
+    </header>
+
+    <div class="pos-container">
+        <!-- LEFT PANEL -->
+        <div class="pos-left">
+            <!-- Product Search -->
+            <div class="product-search-area">
+                <div class="input-group input-group-lg shadow-sm rounded-pill border overflow-hidden">
+                    <span class="input-group-text bg-white border-0 text-muted"><i class="bi bi-upc-scan fs-4 text-primary"></i></span>
+                    <input type="text" class="form-control border-0 bg-white fs-5 fw-medium shadow-none" id="productSearch" placeholder="Scan barcode or search product name..." autofocus autocomplete="off">
+                    <button class="btn btn-light border-0 px-3 d-none" type="button" id="clearSearchBtn"><i class="bi bi-x-lg text-muted"></i></button>
+                </div>
+                
+                <!-- Search Results Dropdown -->
+                <div class="search-results" id="searchResults">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Cart Area -->
+            <div class="cart-area">
+                <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light">
+                    <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-cart3 me-2 text-primary"></i>Current Order</h5>
+                    <span class="badge bg-primary rounded-pill fs-6" id="cartItemCount">0 items</span>
+                </div>
+                
+                <div class="cart-table-wrapper py-3" id="cartWrapper">
+                    <table class="table table-borderless align-middle mb-0" id="cartTable">
+                        <thead>
+                            <tr class="border-bottom">
+                                <th class="text-uppercase small text-muted fw-bold ps-2">Product</th>
+                                <th class="text-uppercase small text-muted fw-bold text-end">Price</th>
+                                <th class="text-uppercase small text-muted fw-bold text-center">Qty</th>
+                                <th class="text-uppercase small text-muted fw-bold text-end">Subtotal</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="cartBody">
+                            <!-- Empty State -->
+                            <tr id="emptyCartState">
+                                <td colspan="5" class="text-center py-5 text-muted">
+                                    <i class="bi bi-basket2 fs-1 d-block mb-3 text-light"></i>
+                                    <h6 class="fw-bold text-dark">Cart is empty</h6>
+                                    <p class="small mb-0">Search or scan products to add them to the order.</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL -->
+        <div class="pos-right">
+            <div class="summary-header bg-light">
+                <h5 class="fw-bold mb-0 text-dark">Order Summary</h5>
+            </div>
+            
+            <div class="line-items" id="summaryLineItems">
+                <!-- Populated by JS for small summary rows -->
+                <div class="text-center py-4 text-muted small" id="emptySummaryState">
+                    No items yet.
+                </div>
+            </div>
+
+            <div class="checkout-area">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted fw-bold text-uppercase small">Subtotal</span>
+                    <span class="text-dark fw-bold font-monospace" id="summarySubtotal">UGX 0</span>
+                </div>
+                <div class="d-flex justify-content-between mb-3 border-bottom pb-3">
+                    <span class="text-muted fw-bold text-uppercase small">Tax</span>
+                    <span class="text-muted fw-medium font-monospace small">UGX 0</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <span class="text-muted fw-bold text-uppercase h6 mb-0">Total</span>
+                    <span class="fw-bold total-row font-monospace" id="summaryTotal">UGX 0</span>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label text-muted small fw-bold text-uppercase mb-1 d-flex justify-content-between">
+                        Amount Paid
+                        <span class="badge bg-light text-dark border"><kbd>F2</kbd> to focus</span>
+                    </label>
+                    <div class="input-group input-group-lg shadow-sm">
+                        <span class="input-group-text bg-white text-muted fw-bold">UGX</span>
+                        <input type="number" class="form-control border-start-0 font-monospace fw-bold fs-4 text-end" id="amountPaid" placeholder="0" min="0">
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center p-3 rounded bg-light mb-4 border">
+                    <span class="text-muted fw-bold text-uppercase small">Change</span>
+                    <span class="fw-bold fs-4 font-monospace text-muted" id="changeAmount">Awaiting payment...</span>
+                </div>
+
+                <button class="btn btn-success btn-lg w-100 py-3 fw-bold rounded-3 shadow-sm mb-3" id="completeSaleBtn" disabled>
+                    <span class="spinner-border spinner-border-sm d-none me-2" role="status" id="completeSpinner"></span>
+                    <i class="bi bi-check-circle me-1"></i> Complete Sale
+                </button>
+                
+                <button class="btn btn-outline-danger w-100 fw-medium rounded-3" id="clearCartBtn" disabled>
+                    <i class="bi bi-trash me-1"></i> Clear Cart
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden input to hold branchId -->
+    <input type="hidden" id="posBranchId" value="<%= user.branch_id || user.branchId %>">
+
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <!-- Clear Cart Confirm Modal -->
+    <div class="modal fade" id="clearCartModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-body text-center p-4">
+                    <i class="bi bi-exclamation-triangle-fill text-danger fs-1 mb-3"></i>
+                    <h5 class="fw-bold">Clear entire cart?</h5>
+                    <p class="text-muted small">This action cannot be undone.</p>
+                    <div class="d-flex gap-2 justify-content-center mt-4">
+                        <button type="button" class="btn btn-light text-muted fw-medium px-4" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-danger fw-bold px-4" id="confirmClearBtn">Yes, Clear</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/pos.js"></script>
+</body>
+</html>

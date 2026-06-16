@@ -1,0 +1,160 @@
+<% layout('layouts/main') -%>
+
+<% block('styles', `
+<style>
+    .receipt-card {
+        max-width: 400px;
+        margin: 0 auto;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        padding: 30px;
+        color: #000;
+        font-family: 'Courier New', Courier, monospace;
+    }
+    
+    .receipt-header {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    
+    .dashed-divider {
+        border-top: 1px dashed #ccc;
+        margin: 15px 0;
+    }
+    
+    .receipt-table {
+        width: 100%;
+        margin-bottom: 15px;
+    }
+    
+    .receipt-table th {
+        text-align: left;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        border-bottom: 1px dashed #ccc;
+        padding-bottom: 5px;
+        margin-bottom: 5px;
+    }
+    
+    .receipt-table td {
+        padding: 5px 0;
+        font-size: 0.9rem;
+        vertical-align: top;
+    }
+    
+    .receipt-footer {
+        text-align: center;
+        margin-top: 20px;
+        font-size: 0.8rem;
+    }
+    
+    .print-actions {
+        max-width: 400px;
+        margin: 0 auto 20px auto;
+        display: flex;
+        gap: 10px;
+    }
+    
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        .main-content, .main-content * {
+            background: transparent !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        #receipt-area, #receipt-area * {
+            visibility: visible;
+        }
+        #receipt-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 80mm; /* Thermal receipt width */
+            box-shadow: none;
+            padding: 0;
+            margin: 0;
+        }
+        .print-actions, .topbar, .sidebar, .breadcrumb-area {
+            display: none !important;
+        }
+    }
+</style>
+`) %>
+
+<div class="print-actions">
+    <button onclick="window.print()" class="btn btn-primary flex-fill fw-bold shadow-sm">
+        <i class="bi bi-printer me-2"></i> Print Receipt
+    </button>
+    <a href="/receipts/<%= sale.id %>/pdf" target="_blank" class="btn btn-outline-dark flex-fill fw-bold bg-white shadow-sm">
+        <i class="bi bi-file-earmark-pdf me-2"></i> Download PDF
+    </a>
+</div>
+
+<div class="receipt-card" id="receipt-area">
+    <div class="receipt-header">
+        <h3 style="font-weight: 800; margin: 0;">CROWN STORES</h3>
+        <div style="font-size: 1rem; margin-top: 5px; font-weight: bold;"><%= sale.branch_name %></div>
+        <div style="font-size: 0.85rem; color: #555;"><%= sale.branch_address %></div>
+    </div>
+    
+    <div class="dashed-divider"></div>
+    
+    <div style="font-size: 0.85rem;">
+        <div><strong>Receipt #:</strong> <%= String(sale.id).padStart(6, '0') %></div>
+        <div><strong>Date:</strong> <%= new Date(sale.sale_date).toLocaleString() %></div>
+        <div><strong>Cashier:</strong> <%= sale.agent_name %></div>
+    </div>
+    
+    <div class="dashed-divider"></div>
+    
+    <table class="receipt-table">
+        <thead>
+            <tr>
+                <th style="width: 15%;">Qty</th>
+                <th style="width: 50%;">Product</th>
+                <th style="width: 35%; text-align: right;">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% items.forEach(item => { %>
+                <tr>
+                    <td><%= item.quantity %>x</td>
+                    <td><%= item.product_name %></td>
+                    <td style="text-align: right;"><%= parseFloat(item.subtotal).toLocaleString('en-UG') %></td>
+                </tr>
+            <% }) %>
+        </tbody>
+    </table>
+    
+    <div class="dashed-divider"></div>
+    
+    <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem;">
+        <span>Subtotal:</span>
+        <span>UGX <%= parseFloat(sale.total_amount).toLocaleString('en-UG') %></span>
+    </div>
+    
+    <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 1.2rem; font-weight: bold;">
+        <span>TOTAL:</span>
+        <span>UGX <%= parseFloat(sale.total_amount).toLocaleString('en-UG') %></span>
+    </div>
+    
+    <div style="display: flex; justify-content: space-between; margin-bottom: 2px; font-size: 0.9rem;">
+        <span>Amount Paid:</span>
+        <span>UGX <%= parseFloat(sale.amount_paid).toLocaleString('en-UG') %></span>
+    </div>
+    
+    <div style="display: flex; justify-content: space-between; margin-bottom: 2px; font-size: 0.9rem;">
+        <span>Change:</span>
+        <span>UGX <%= parseFloat(sale.change_given).toLocaleString('en-UG') %></span>
+    </div>
+    
+    <div class="dashed-divider"></div>
+    
+    <div class="receipt-footer">
+        <p style="margin: 0; font-style: italic;">Thank you for shopping at Crown Stores!</p>
+        <p style="margin: 5px 0 0 0; font-size: 0.75rem;">Crown Stores &mdash; Quality You Can Trust</p>
+    </div>
+</div>

@@ -1,0 +1,138 @@
+<% layout('layouts/main') -%>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0">Procurement</h4>
+    <a href="/procurement/new" class="btn btn-primary d-flex align-items-center gap-2 px-4 shadow-sm fw-medium">
+        <i class="bi bi-plus-lg"></i> Record Procurement
+    </a>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-12 col-md-4">
+        <div class="card border-0 shadow-sm h-100 bg-primary-light">
+            <div class="card-body p-4 d-flex align-items-center">
+                <div class="bg-white rounded p-3 d-flex justify-content-center align-items-center shadow-sm" style="width: 60px; height: 60px;">
+                    <i class="bi bi-receipt text-primary fs-3"></i>
+                </div>
+                <div class="ms-3">
+                    <h6 class="text-muted small fw-bold text-uppercase mb-1">Total Procurements</h6>
+                    <h3 class="fw-bold text-dark mb-0"><%= summary.totalProcurements %></h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card border-0 shadow-sm h-100 bg-success-light">
+            <div class="card-body p-4 d-flex align-items-center">
+                <div class="bg-white rounded p-3 d-flex justify-content-center align-items-center shadow-sm" style="width: 60px; height: 60px;">
+                    <i class="bi bi-box-seam text-success fs-3"></i>
+                </div>
+                <div class="ms-3">
+                    <h6 class="text-muted small fw-bold text-uppercase mb-1">Total Units Received</h6>
+                    <h3 class="fw-bold text-dark mb-0"><%= summary.totalUnits %></h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card border-0 shadow-sm h-100 bg-warning-light">
+            <div class="card-body p-4 d-flex align-items-center">
+                <div class="bg-white rounded p-3 d-flex justify-content-center align-items-center shadow-sm" style="width: 60px; height: 60px;">
+                    <i class="bi bi-currency-dollar text-warning fs-3"></i>
+                </div>
+                <div class="ms-3">
+                    <h6 class="text-muted small fw-bold text-uppercase mb-1">Total Cost Value</h6>
+                    <h3 class="fw-bold text-dark mb-0 font-monospace">$<%= parseFloat(summary.totalValue).toFixed(2) %></h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+        <form method="GET" action="/procurement" class="row g-3">
+            <div class="col-12 col-md-3">
+                <label class="form-label text-muted small fw-bold text-uppercase mb-1">Date From</label>
+                <input type="date" class="form-control bg-light border-0" name="date_from" value="<%= filters.date_from || '' %>">
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label text-muted small fw-bold text-uppercase mb-1">Date To</label>
+                <input type="date" class="form-control bg-light border-0" name="date_to" value="<%= filters.date_to || '' %>">
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label text-muted small fw-bold text-uppercase mb-1">Supplier</label>
+                <input type="text" class="form-control bg-light border-0" name="supplier" placeholder="Search supplier..." value="<%= filters.supplier || '' %>">
+            </div>
+            <div class="col-12 col-md-2 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-dark w-100 fw-medium shadow-sm">Apply</button>
+                <a href="/procurement" class="btn border border-light text-muted w-100 bg-white shadow-sm" title="Reset Filters"><i class="bi bi-x-lg"></i></a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4 py-3 text-uppercase small text-muted fw-bold">Date</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold">Product</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold">Category</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold">Supplier</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold text-end">Qty</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold text-end">Cost/Unit</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold text-end">Total</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold text-end pe-4">Recorded By</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if(procurements && procurements.length > 0) { %>
+                        <% procurements.forEach(p => { %>
+                            <tr>
+                                <td class="ps-4 fw-medium text-muted">
+                                    <%= new Date(p.date_received).toLocaleDateString(undefined, {year: 'numeric', month: 'short', day: '2-digit'}) %>
+                                </td>
+                                <td class="fw-bold text-dark">
+                                    <a href="/products/<%= p.product_id %>" class="text-decoration-none text-dark d-flex align-items-center gap-2">
+                                        <div class="bg-light rounded p-2 text-muted" style="width: 32px; height: 32px; display: inline-flex; align-items:center; justify-content:center;">
+                                            <i class="bi bi-box"></i>
+                                        </div>
+                                        <%= p.product_name %>
+                                    </a>
+                                </td>
+                                <td><span class="badge bg-light text-dark fw-medium border"><%= p.category_name || 'N/A' %></span></td>
+                                <td class="text-muted"><%= p.supplier_name %></td>
+                                <td class="text-end fw-bold text-dark"><%= p.quantity_received %></td>
+                                <td class="text-end font-monospace text-muted">$<%= parseFloat(p.cost_price).toFixed(2) %></td>
+                                <td class="text-end fw-bold font-monospace text-dark">$<%= parseFloat(p.total_value).toFixed(2) %></td>
+                                <td class="pe-4 text-end text-muted small fw-medium d-flex flex-column align-items-end">
+                                    <span><i class="bi bi-person me-1"></i><%= p.recorded_by_name %></span>
+                                    <span style="font-size: 0.75rem;"><%= new Date(p.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %></span>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">
+                                <div class="bg-light rounded-circle d-inline-flex justify-content-center align-items-center mb-3 shadow-sm border border-white" style="width: 64px; height: 64px;">
+                                    <i class="bi bi-inbox fs-2"></i>
+                                </div>
+                                <h6 class="fw-bold text-dark">No procurement records found</h6>
+                                <p class="small mb-0">Adjust your filters or record a new procurement.</p>
+                            </td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <% if(pagination && pagination.totalPages > 1) { %>
+        <div class="card-footer bg-transparent border-top p-4 d-flex justify-content-between align-items-center">
+            <span class="text-muted small fw-medium">Showing page <%= pagination.page %> of <%= pagination.totalPages %></span>
+            <%- include('../../partials/pagination', { pagination: pagination, baseUrl: '/procurement', queryParams: filters }) %>
+        </div>
+    <% } %>
+</div>

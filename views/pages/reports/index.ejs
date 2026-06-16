@@ -1,0 +1,490 @@
+<% layout('layouts/main') -%>
+
+<!-- Add Chart.js for reports -->
+<% block('scripts', `
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Sales Revenue Chart
+        const salesCtx = document.getElementById('salesChart');
+        if (salesCtx) {
+            new Chart(salesCtx, {
+                type: 'line',
+                data: {
+                    labels: <%- JSON.stringify(revenueChart.labels) %>,
+                    datasets: [{
+                        label: 'Revenue (UGX)',
+                        data: <%- JSON.stringify(revenueChart.data) %>,
+                        borderColor: '#1B4FD8',
+                        backgroundColor: 'rgba(27, 79, 216, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+        
+        // Branch Revenue Chart for Director
+        const branchCtx = document.getElementById('branchChart');
+        if (branchCtx && <%- JSON.stringify(branchChart ? branchChart.labels.length > 0 : false) %>) {
+            new Chart(branchCtx, {
+                type: 'bar',
+                data: {
+                    labels: <%- JSON.stringify(branchChart ? branchChart.labels : []) %>,
+                    datasets: [{
+                        label: 'Revenue (UGX)',
+                        data: <%- JSON.stringify(branchChart ? branchChart.data : []) %>,
+                        backgroundColor: '#1B4FD8',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        // CSV Export utility
+        window.exportTableToCSV = function(tableId, filename) {
+            const table = document.getElementById(tableId);
+            if (!table) return;
+            
+            let csv = [];
+            const rows = table.querySelectorAll('tr');
+            
+            for (let i = 0; i < rows.length; i++) {
+                let row = [], cols = rows[i].querySelectorAll('td, th');
+                
+                for (let j = 0; j < cols.length; j++) {
+                    let data = cols[j].innerText.replace(/(\\r\\n|\\n|\\r)/gm, '').replace(/"/g, '""');
+                    row.push('"' + data + '"');
+                }
+                csv.push(row.join(','));
+            }
+
+            const csvFile = new Blob([csv.join('\\n')], {type: 'text/csv'});
+            const downloadLink = document.createElement('a');
+            downloadLink.download = filename;
+            downloadLink.href = window.URL.createObjectURL(csvFile);
+            downloadLink.style.display = 'none';
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+    });
+
+    function filterInventory() {
+        const val = document.getElementById('invStatusFilter').value.toLowerCase();
+        const rows = document.querySelectorAll('#inventoryTable tbody tr');
+        rows.forEach(r => {
+            const status = r.getAttribute('data-status').toLowerCase();
+            if (val === 'all' || status === val) {
+                r.style.display = '';
+            } else {
+                r.style.display = 'none';
+            }
+        });
+    }
+</script>
+`) %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0">Reports & Analytics</h4>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+        <form method="GET" action="/reports" class="row g-3">
+            <div class="col-12 col-md-3">
+                <label class="form-label text-muted small fw-bold text-uppercase mb-1">Date From</label>
+                <input type="date" class="form-control bg-light border-0" name="date_from" value="<%= filters.date_from %>">
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label text-muted small fw-bold text-uppercase mb-1">Date To</label>
+                <input type="date" class="form-control bg-light border-0" name="date_to" value="<%= filters.date_to %>">
+            </div>
+            <% if (role === 'director') { %>
+            <div class="col-12 col-md-3">
+                <label class="form-label text-muted small fw-bold text-uppercase mb-1">Branch</label>
+                <select class="form-select bg-light border-0" name="branch_id">
+                    <option value="">All Branches</option>
+                    <% allBranches.forEach(b => { %>
+                        <option value="<%= b.id %>" <%= String(filters.branch_id) === String(b.id) ? 'selected' : '' %>><%= b.name %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <% } %>
+            <div class="col-12 col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100 fw-medium shadow-sm">Apply Filters</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<ul class="nav nav-tabs border-bottom mb-4" id="reportTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active fw-medium text-dark" id="sales-tab" data-bs-toggle="tab" data-bs-target="#sales" type="button" role="tab">Sales Report</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-medium text-dark" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory" type="button" role="tab">Inventory Report</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-medium text-dark" id="procurement-tab" data-bs-toggle="tab" data-bs-target="#procurement" type="button" role="tab">Procurement</button>
+    </li>
+    <% if (role === 'manager') { %>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-medium text-dark" id="cashier-tab" data-bs-toggle="tab" data-bs-target="#cashier" type="button" role="tab">Cashier Balancing</button>
+    </li>
+    <% } %>
+    <% if (role === 'director') { %>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-medium text-dark" id="branch-tab" data-bs-toggle="tab" data-bs-target="#branch" type="button" role="tab">Branch Performance</button>
+    </li>
+    <% } %>
+</ul>
+
+<div class="tab-content" id="reportTabsContent">
+    
+    <!-- Tab 1: Sales -->
+    <div class="tab-pane fade show active" id="sales" role="tabpanel">
+        <div class="d-flex justify-content-end mb-3">
+            <button class="btn btn-outline-dark btn-sm fw-medium shadow-sm" onclick="exportTableToCSV('salesTable', 'sales_report.csv')">
+                <i class="bi bi-download me-1"></i> Download CSV
+            </button>
+        </div>
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
+                    <div class="card-body p-4 text-center">
+                        <div class="text-muted small fw-bold text-uppercase mb-2">Total Revenue</div>
+                        <h4 class="fw-bold mb-0 text-primary">UGX <%= salesSummary.totalRev.toLocaleString() %></h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
+                    <div class="card-body p-4 text-center">
+                        <div class="text-muted small fw-bold text-uppercase mb-2">Total Transactions</div>
+                        <h4 class="fw-bold mb-0 text-dark"><%= salesSummary.transCount %></h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
+                    <div class="card-body p-4 text-center">
+                        <div class="text-muted small fw-bold text-uppercase mb-2">Avg Order Value</div>
+                        <h4 class="fw-bold mb-0 text-dark">UGX <%= salesSummary.avgOrderValue.toLocaleString(undefined, {maximumFractionDigits:0}) %></h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
+                    <div class="card-body p-4 text-center">
+                        <div class="text-muted small fw-bold text-uppercase mb-2">Top Product</div>
+                        <h5 class="fw-bold mb-0 text-dark text-truncate" title="<%= salesSummary.topProduct %>"><%= salesSummary.topProduct %></h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4 rounded-4">
+            <div class="card-body p-4" style="height: 350px;">
+                <canvas id="salesChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="salesTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4 py-3 text-uppercase small text-muted fw-bold">Product</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold">Category</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-end">Qty Sold</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-end">Total Revenue</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-center">% of Sales</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% salesProducts.forEach(p => { %>
+                            <tr>
+                                <td class="ps-4 fw-bold text-dark"><%= p.name %></td>
+                                <td class="text-muted small"><%= p.category_name || 'N/A' %></td>
+                                <td class="text-end fw-medium"><%= p.total_qty %></td>
+                                <td class="text-end fw-bold font-monospace text-dark">UGX <%= p.revenue.toLocaleString() %></td>
+                                <td class="text-center">
+                                    <span class="badge bg-light border text-dark"><%= p.percentage %>%</span>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 2: Inventory -->
+    <div class="tab-pane fade" id="inventory" role="tabpanel">
+        <div class="d-flex justify-content-between mb-3 align-items-center">
+            <div style="width: 200px;">
+                <select class="form-select bg-white border-1 shadow-sm" id="invStatusFilter" onchange="filterInventory()">
+                    <option value="All">All Statuses</option>
+                    <option value="In Stock">In Stock</option>
+                    <option value="Low Stock">Low Stock</option>
+                    <option value="Out of Stock">Out of Stock</option>
+                </select>
+            </div>
+            <button class="btn btn-outline-dark btn-sm fw-medium shadow-sm" onclick="exportTableToCSV('inventoryTable', 'inventory_report.csv')">
+                <i class="bi bi-download me-1"></i> Download CSV
+            </button>
+        </div>
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
+                    <div class="card-body p-4 text-center">
+                        <div class="text-muted small fw-bold text-uppercase mb-2">Total SKUs</div>
+                        <h4 class="fw-bold mb-0 text-dark"><%= invSummary.totalSkus %></h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
+                    <div class="card-body p-4 text-center">
+                        <div class="text-muted small fw-bold text-uppercase mb-2">Total Value</div>
+                        <h4 class="fw-bold mb-0 text-dark">UGX <%= invSummary.totalInvValue.toLocaleString() %></h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
+                    <div class="card-body p-4 text-center">
+                        <div class="text-muted small fw-bold text-uppercase mb-2">Low Stock</div>
+                        <h4 class="fw-bold mb-0 text-warning"><%= invSummary.lowStockCount %></h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
+                    <div class="card-body p-4 text-center">
+                        <div class="text-muted small fw-bold text-uppercase mb-2">Out of Stock</div>
+                        <h4 class="fw-bold mb-0 text-danger"><%= invSummary.outOfStockCount %></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="inventoryTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4 py-3 text-uppercase small text-muted fw-bold">Product</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold">Category</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-end">Stock</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-end">Reorder</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-end">Value</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-center pe-4">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% inventoryData.forEach(p => { %>
+                            <tr data-status="<%= p.status %>">
+                                <td class="ps-4 fw-bold text-dark"><%= p.product_name %></td>
+                                <td class="text-muted small"><%= p.category_name || 'N/A' %></td>
+                                <td class="text-end fw-medium"><%= p.quantity_available %></td>
+                                <td class="text-end text-muted small"><%= p.reorder_level %></td>
+                                <td class="text-end fw-bold font-monospace text-dark">UGX <%= parseFloat(p.stock_value || 0).toLocaleString() %></td>
+                                <td class="text-center pe-4">
+                                    <% if(p.status === 'In Stock') { %>
+                                        <span class="badge bg-success-light text-success border border-success border-opacity-25 py-1 px-2">In Stock</span>
+                                    <% } else if(p.status === 'Low Stock') { %>
+                                        <span class="badge bg-warning-light text-warning border border-warning border-opacity-25 py-1 px-2">Low Stock</span>
+                                    <% } else { %>
+                                        <span class="badge bg-danger-light text-danger border border-danger border-opacity-25 py-1 px-2">Out of Stock</span>
+                                    <% } %>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 3: Procurement -->
+    <div class="tab-pane fade" id="procurement" role="tabpanel">
+        <div class="d-flex justify-content-end mb-3">
+            <button class="btn btn-outline-dark btn-sm fw-medium shadow-sm" onclick="exportTableToCSV('procurementTable', 'procurement_report.csv')">
+                <i class="bi bi-download me-1"></i> Download CSV
+            </button>
+        </div>
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
+                    <div class="card-body p-4 text-center">
+                        <div class="text-muted small fw-bold text-uppercase mb-2">Total Procurements</div>
+                        <h4 class="fw-bold mb-0 text-dark"><%= procSummary.totalProcurements %></h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
+                    <div class="card-body p-4 text-center">
+                        <div class="text-muted small fw-bold text-uppercase mb-2">Total Units Received</div>
+                        <h4 class="fw-bold mb-0 text-dark"><%= procSummary.totalProcUnits.toLocaleString() %></h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
+                    <div class="card-body p-4 text-center">
+                        <div class="text-muted small fw-bold text-uppercase mb-2">Total Cost</div>
+                        <h4 class="fw-bold mb-0 text-dark">UGX <%= procSummary.totalProcCost.toLocaleString() %></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="procurementTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4 py-3 text-uppercase small text-muted fw-bold">Date</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold">Product</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold">Supplier</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-end">Qty</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-end">Cost</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-end">Total</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold">By</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% procurementData.forEach(p => { %>
+                            <tr>
+                                <td class="ps-4 text-muted small"><%= new Date(p.pr_date).toLocaleDateString() %></td>
+                                <td class="fw-bold text-dark"><%= p.product_name %></td>
+                                <td class="text-muted small"><%= p.supplier_name || 'N/A' %></td>
+                                <td class="text-end fw-medium"><%= p.quantity_received %></td>
+                                <td class="text-end text-muted small font-monospace">UGX <%= parseFloat(p.unit_cost).toLocaleString() %></td>
+                                <td class="text-end fw-bold font-monospace text-dark">UGX <%= parseFloat(p.total_cost).toLocaleString() %></td>
+                                <td class="text-muted small"><%= p.full_name %></td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 4: Cashier Balancing -->
+    <% if (role === 'manager') { %>
+    <div class="tab-pane fade" id="cashier" role="tabpanel">
+        <div class="d-flex justify-content-end mb-3">
+            <button class="btn btn-outline-dark btn-sm fw-medium shadow-sm" onclick="exportTableToCSV('cashierTable', 'cashier_balancing_report.csv')">
+                <i class="bi bi-download me-1"></i> Download CSV
+            </button>
+        </div>
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="cashierTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4 py-3 text-uppercase small text-muted fw-bold">Date</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold">Cashier</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-end">Expected (UGX)</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-end">Submitted (UGX)</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-end">Variance (UGX)</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-center pe-4">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% cashierData.forEach(cb => { 
+                            const variance = parseFloat(cb.variance_amount);
+                        %>
+                            <tr>
+                                <td class="ps-4 text-muted small"><%= new Date(cb.balance_date).toLocaleDateString() %></td>
+                                <td class="fw-bold text-dark"><%= cb.cashier_name %></td>
+                                <td class="text-end text-muted font-monospace"><%= parseFloat(cb.expected_amount).toLocaleString() %></td>
+                                <td class="text-end fw-medium font-monospace"><%= parseFloat(cb.actual_amount).toLocaleString() %></td>
+                                <td class="text-end fw-bold font-monospace 
+                                    <%= variance === 0 ? 'text-success' : (variance > 0 ? 'text-primary' : 'text-danger') %>">
+                                    <%= variance.toLocaleString() %>
+                                </td>
+                                <td class="text-center pe-4">
+                                    <% if (variance === 0) { %>
+                                        <span class="badge bg-success-light text-success border border-success border-opacity-25 py-1 px-2">Balanced</span>
+                                    <% } else if (variance > 0) { %>
+                                        <span class="badge bg-primary-light text-primary border border-primary border-opacity-25 py-1 px-2">Overage</span>
+                                    <% } else { %>
+                                        <span class="badge bg-danger-light text-danger border border-danger border-opacity-25 py-1 px-2">Shortage</span>
+                                    <% } %>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <% } %>
+
+    <!-- Tab 5: Branch Performance -->
+    <% if (role === 'director') { %>
+    <div class="tab-pane fade" id="branch" role="tabpanel">
+        <div class="d-flex justify-content-end mb-3">
+            <a href="/reports/pdf?date_from=<%= filters.date_from %>&date_to=<%= filters.date_to %>" target="_blank" class="btn btn-outline-dark btn-sm fw-medium shadow-sm">
+                <i class="bi bi-file-earmark-pdf me-1"></i> Download PDF Report
+            </a>
+        </div>
+        
+        <div class="card border-0 shadow-sm mb-4 rounded-4">
+            <div class="card-body p-4" style="height: 350px;">
+                <canvas id="branchChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4 py-3 text-uppercase small text-muted fw-bold">Branch</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-end">Revenue</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-end">Procurement Cost</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-end">Inventory Value</th>
+                            <th class="py-3 text-uppercase small text-muted fw-bold text-center pe-4">Transactions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% branchPerfData.forEach(b => { %>
+                            <tr>
+                                <td class="ps-4 fw-bold text-dark"><%= b.branch_name %></td>
+                                <td class="text-end fw-bold font-monospace text-primary">UGX <%= parseFloat(b.revenue).toLocaleString() %></td>
+                                <td class="text-end font-monospace text-muted">UGX <%= parseFloat(b.proc_cost).toLocaleString() %></td>
+                                <td class="text-end font-monospace text-muted">UGX <%= parseFloat(b.inv_value).toLocaleString() %></td>
+                                <td class="text-center pe-4"><span class="badge bg-light text-dark border px-2 py-1"><%= b.trans_count %></span></td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <% } %>
+
+</div>

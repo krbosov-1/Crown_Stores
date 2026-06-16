@@ -1,0 +1,37 @@
+<% layout('layouts/main') -%>
+
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-8 col-xl-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-transparent border-0 pt-4 pb-2 px-4">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-tags text-primary me-2"></i> <%= category ? 'Edit Category' : 'Add New Category' %></h5>
+            </div>
+            <div class="card-body p-4">
+                <form action="<%= category ? `/categories/${category.id}/update` : '/categories' %>" method="POST">
+                    
+                    <div class="form-floating mb-4 shadow-sm rounded">
+                        <input type="text" class="form-control bg-light border-0" id="name" name="name" placeholder="Category Name" value="<%= category ? category.name : '' %>" required maxlength="100">
+                        <label for="name" class="text-muted">Category Name <span class="text-danger">*</span></label>
+                    </div>
+
+                    <div class="form-floating mb-4 shadow-sm rounded">
+                        <textarea class="form-control bg-light border-0" id="description" name="description" placeholder="Description" style="height: 120px"><%= category ? category.description : '' %></textarea>
+                        <label for="description" class="text-muted">Description (Optional)</label>
+                    </div>
+
+                    <% if(category) { %>
+                        <div class="form-check form-switch mb-4 bg-light p-3 rounded d-flex align-items-center gap-3">
+                            <input class="form-check-input m-0 border-primary" type="checkbox" role="switch" id="status" name="status" <%= category.status === 'active' ? 'checked' : '' %> style="transform: scale(1.2);">
+                            <label class="form-check-label user-select-none fw-medium m-0" for="status">Active Status</label>
+                        </div>
+                    <% } %>
+
+                    <div class="d-flex gap-3 justify-content-end pt-2 border-top border-light">
+                        <a href="/categories" class="btn btn-light fw-medium px-4">Cancel</a>
+                        <button type="submit" class="btn btn-primary fw-medium px-4"><%= category ? 'Save Changes' : 'Create Category' %></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,25 @@
+<% if (typeof totalPages !== 'undefined' && totalPages > 1) { 
+    const current = typeof currentPage !== 'undefined' ? Number(currentPage) : 1;
+%>
+<nav aria-label="Page navigation" class="mt-4">
+    <ul class="pagination justify-content-end mb-0" style="gap: 4px;">
+        <li class="page-item <%= current <= 1 ? 'disabled' : '' %>">
+            <a class="page-link border-0 text-muted" style="border-radius: var(--border-radius-md); background-color: transparent;" href="<%= baseUrl %>?page=<%= current - 1 %>" tabindex="-1" aria-disabled="true">Previous</a>
+        </li>
+        
+        <% for (let i = 1; i <= totalPages; i++) { %>
+            <% if (i === 1 || i === totalPages || (i >= current - 2 && i <= current + 2)) { %>
+                <li class="page-item <%= current === i ? 'active' : '' %>">
+                    <a class="page-link border-0 rounded" style="font-weight: 600; <%= current === i ? 'background-color: var(--color-primary); color: white;' : 'background-color: transparent; color: var(--color-text);' %>" href="<%= baseUrl %>?page=<%= i %>"><%= i %></a>
+                </li>
+            <% } else if (i === current - 3 || i === current + 3) { %>
+                <li class="page-item disabled"><span class="page-link border-0 bg-transparent text-muted">...</span></li>
+            <% } %>
+        <% } %>
+        
+        <li class="page-item <%= current >= totalPages ? 'disabled' : '' %>">
+            <a class="page-link border-0 text-muted" style="border-radius: var(--border-radius-md); background-color: transparent;" href="<%= baseUrl %>?page=<%= current + 1 %>">Next</a>
+        </li>
+    </ul>
+</nav>
+<% } %>

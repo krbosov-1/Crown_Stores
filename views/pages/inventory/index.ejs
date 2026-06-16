@@ -1,0 +1,339 @@
+<% layout('layouts/main') -%>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0">Inventory Control</h4>
+    <a href="/inventory/history" class="btn btn-outline-secondary d-flex align-items-center gap-2 px-4 shadow-sm fw-medium rounded-3 py-2">
+        <i class="bi bi-clock-history"></i> Movement History
+    </a>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-12 col-md-3">
+        <div class="card border-0 shadow-sm h-100 bg-primary-light">
+            <div class="card-body p-4 d-flex align-items-center">
+                <div class="bg-white rounded p-3 d-flex justify-content-center align-items-center shadow-sm" style="width: 56px; height: 56px;">
+                    <i class="bi bi-box text-primary fs-4"></i>
+                </div>
+                <div class="ms-3">
+                    <h6 class="text-muted small fw-bold text-uppercase mb-1">Total SKUs</h6>
+                    <h4 class="fw-bold text-dark mb-0"><%= summary.total_skus %></h4>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-3">
+        <div class="card border-0 shadow-sm h-100 bg-success-light">
+            <div class="card-body p-4 d-flex align-items-center">
+                <div class="bg-white rounded p-3 d-flex justify-content-center align-items-center shadow-sm" style="width: 56px; height: 56px;">
+                    <i class="bi bi-currency-dollar text-success fs-4"></i>
+                </div>
+                <div class="ms-3">
+                    <h6 class="text-muted small fw-bold text-uppercase mb-1">Total Value</h6>
+                    <h4 class="fw-bold text-dark mb-0 font-monospace">$<%= parseFloat(summary.total_value).toFixed(2) %></h4>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-3">
+        <div class="card border-0 shadow-sm h-100 bg-warning-light">
+            <div class="card-body p-4 d-flex align-items-center">
+                <div class="bg-white rounded p-3 d-flex justify-content-center align-items-center shadow-sm" style="width: 56px; height: 56px;">
+                    <i class="bi bi-exclamation-triangle text-warning fs-4"></i>
+                </div>
+                <div class="ms-3">
+                    <h6 class="text-muted small fw-bold text-uppercase mb-1">Low Stock</h6>
+                    <h4 class="fw-bold text-dark mb-0"><%= summary.low_stock_count %></h4>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-3">
+        <div class="card border-0 shadow-sm h-100 bg-danger-light">
+            <div class="card-body p-4 d-flex align-items-center">
+                <div class="bg-white rounded p-3 d-flex justify-content-center align-items-center shadow-sm" style="width: 56px; height: 56px;">
+                    <i class="bi bi-x-circle text-danger fs-4"></i>
+                </div>
+                <div class="ms-3">
+                    <h6 class="text-muted small fw-bold text-uppercase mb-1">Out of Stock</h6>
+                    <h4 class="fw-bold text-dark mb-0"><%= summary.out_of_stock_count %></h4>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+        <form method="GET" action="/inventory" class="row g-3">
+            <div class="col-12 col-md-4">
+                <label class="form-label text-muted small fw-bold text-uppercase mb-1">Category</label>
+                <select name="category_id" class="form-select bg-light border-0">
+                    <option value="">All Categories</option>
+                    <% categories.forEach(c => { %>
+                        <option value="<%= c.id %>" <%= filters.category_id == c.id ? 'selected' : '' %>><%= c.name %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label text-muted small fw-bold text-uppercase mb-1">Status</label>
+                <select name="status" class="form-select bg-light border-0">
+                    <option value="all" <%= filters.status === 'all' || !filters.status ? 'selected' : '' %>>All Statuses</option>
+                    <option value="in_stock" <%= filters.status === 'in_stock' ? 'selected' : '' %>>In Stock</option>
+                    <option value="low_stock" <%= filters.status === 'low_stock' ? 'selected' : '' %>>Low Stock</option>
+                    <option value="out_of_stock" <%= filters.status === 'out_of_stock' ? 'selected' : '' %>>Out of Stock</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-4 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-dark w-100 fw-medium shadow-sm">Filter</button>
+                <a href="/inventory" class="btn border border-light text-muted bg-white shadow-sm px-3" title="Clear"><i class="bi bi-x-lg"></i></a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4 py-3 text-uppercase small text-muted fw-bold">Product</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold">Category</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold text-end">In Stock</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold text-end">Reorder Lvl</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold text-end">Value</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold text-center">Status</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold">Last Updated</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if(inventory && inventory.length > 0) { %>
+                        <% inventory.forEach(item => { %>
+                            <tr>
+                                <td class="ps-4 py-3 text-dark fw-bold"><%= item.product_name %></td>
+                                <td><span class="badge bg-light text-dark border fw-medium"><%= item.category_name || 'N/A' %></span></td>
+                                <td class="text-end fw-bold text-dark fs-6"><%= item.quantity_available %></td>
+                                <td class="text-end text-muted small"><%= item.reorder_level %></td>
+                                <td class="text-end font-monospace text-dark fw-medium">$<%= parseFloat(item.total_value).toFixed(2) %></td>
+                                <td class="text-center">
+                                    <% if (item.stock_status === 'out_of_stock') { %>
+                                        <span class="badge bg-danger-light text-danger border border-danger-subtle px-2 py-1">Out of Stock</span>
+                                    <% } else if (item.stock_status === 'low_stock') { %>
+                                        <span class="badge bg-warning-light text-warning border border-warning-subtle px-2 py-1">Low Stock</span>
+                                    <% } else { %>
+                                        <span class="badge bg-success-light text-success border border-success-subtle px-2 py-1">In Stock</span>
+                                    <% } %>
+                                </td>
+                                <td class="text-muted small"><%= new Date(item.last_updated).toLocaleDateString() %></td>
+                                <td class="text-end pe-4">
+                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm btn-adjust"
+                                            data-id="<%= item.product_id %>"
+                                            data-name="<%= item.product_name %>"
+                                            data-current="<%= item.quantity_available %>">
+                                        <i class="bi bi-sliders me-1"></i> Adjust
+                                    </button>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">
+                                <i class="bi bi-inboxes fs-1 d-block mb-3"></i>
+                                No inventory items match your criteria.
+                            </td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <% if(pagination && pagination.totalPages > 1) { %>
+        <div class="card-footer bg-transparent border-top p-4 d-flex justify-content-between align-items-center">
+            <span class="text-muted small fw-medium">Showing page <%= pagination.page %> of <%= pagination.totalPages %></span>
+            <%- include('../../partials/pagination', { pagination: pagination, baseUrl: '/inventory', queryParams: filters }) %>
+        </div>
+    <% } %>
+</div>
+
+<!-- Adjustment Modal -->
+<div class="modal fade" id="adjustModal" tabindex="-1" aria-labelledby="adjustModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h5 class="modal-title fw-bold" id="adjustModalLabel">Adjust Stock</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body pt-3 pb-4 px-4">
+        <form id="adjustForm">
+            <input type="hidden" id="adjust_product_id">
+            
+            <div class="mb-4 text-center">
+                <h5 class="fw-bold text-primary mb-1" id="adjust_product_name">Product Name</h5>
+                <p class="text-muted small mb-0">Current Stock: <span class="badge bg-light text-dark border fs-6 fw-bold" id="adjust_current_stock">0</span></p>
+            </div>
+
+            <div class="form-floating mb-3 position-relative">
+                <input type="number" class="form-control border-secondary font-monospace fw-bold text-center fs-4" id="adjustment_quantity" placeholder="Quantity (+/-)" required>
+                <label for="adjustment_quantity">Adjustment Quantity (+/-)</label>
+                <div class="form-text mt-2 text-center text-muted">
+                    Use positive numbers to add (e.g. <span class="fw-bold text-success">+5</span>)<br>
+                    Use negative numbers to remove (e.g. <span class="fw-bold text-danger">-3</span>)
+                </div>
+            </div>
+
+            <!-- Live Preview Area -->
+            <div class="alert bg-light border text-center py-3 mb-3" id="previewArea">
+                <span class="text-muted small d-block mb-1 text-uppercase fw-bold">New Stock Will Be</span>
+                <h2 class="mb-0 fw-bold" id="adjust_new_stock">--</h2>
+            </div>
+            <div class="alert alert-danger d-none border-0 shadow-sm small py-2" id="adjust_error_msg"></div>
+
+            <div class="form-floating mb-4">
+                <textarea class="form-control border-secondary" id="adjust_reason" placeholder="Reason for adjustment" style="height: 100px" required minlength="10"></textarea>
+                <label for="adjust_reason">Reason for adjustment (min 10 chars) *</label>
+            </div>
+
+            <div class="d-grid">
+                <button type="button" class="btn btn-primary py-2 fw-medium shadow-sm rounded-3" id="btnSubmitAdjustment">
+                    <span class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true" id="adjustSpinner"></span>
+                    Confirm Adjustment
+                </button>
+            </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% block('scripts').append(`
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const adjustModalEl = document.getElementById('adjustModal');
+        let adjustModal;
+        if(typeof bootstrap !== 'undefined'){
+             adjustModal = new bootstrap.Modal(adjustModalEl);
+        }
+
+        const adjustProductId = document.getElementById('adjust_product_id');
+        const adjustProductName = document.getElementById('adjust_product_name');
+        const adjustCurrentStock = document.getElementById('adjust_current_stock');
+        const adjustmentQuantity = document.getElementById('adjustment_quantity');
+        const adjustNewStock = document.getElementById('adjust_new_stock');
+        const adjustReason = document.getElementById('adjust_reason');
+        const btnSubmitAdjustment = document.getElementById('btnSubmitAdjustment');
+        const adjustSpinner = document.getElementById('adjustSpinner');
+        const adjustErrorMsg = document.getElementById('adjust_error_msg');
+        
+        let currentStockVal = 0;
+
+        // Open Modal
+        document.querySelectorAll('.btn-adjust').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = btn.getAttribute('data-id');
+                const name = btn.getAttribute('data-name');
+                const current = parseInt(btn.getAttribute('data-current'));
+
+                adjustProductId.value = id;
+                adjustProductName.textContent = name;
+                adjustCurrentStock.textContent = current;
+                currentStockVal = current;
+                
+                adjustmentQuantity.value = '';
+                adjustReason.value = '';
+                adjustNewStock.textContent = '--';
+                adjustNewStock.classList.remove('text-danger', 'text-success');
+                adjustErrorMsg.classList.add('d-none');
+                
+                adjustModal.show();
+                setTimeout(() => adjustmentQuantity.focus(), 500);
+            });
+        });
+
+        // Live preview calculation
+        adjustmentQuantity.addEventListener('input', () => {
+            const adj = parseInt(adjustmentQuantity.value);
+            adjustErrorMsg.classList.add('d-none');
+            
+            if (isNaN(adj)) {
+                adjustNewStock.textContent = '--';
+                adjustNewStock.className = 'mb-0 fw-bold';
+                return;
+            }
+
+            const newStock = currentStockVal + adj;
+            adjustNewStock.textContent = newStock;
+            
+            if (newStock < 0) {
+                adjustNewStock.className = 'mb-0 fw-bold text-danger';
+                adjustErrorMsg.textContent = 'Resulting stock cannot be negative!';
+                adjustErrorMsg.classList.remove('d-none');
+            } else if (adj > 0) {
+                adjustNewStock.className = 'mb-0 fw-bold text-success';
+            } else if (adj < 0){
+                adjustNewStock.className = 'mb-0 fw-bold text-warning';
+            } else {
+                adjustNewStock.className = 'mb-0 fw-bold';
+            }
+        });
+
+        // Submit via AJAX
+        btnSubmitAdjustment.addEventListener('click', () => {
+            const pid = adjustProductId.value;
+            const adj = parseInt(adjustmentQuantity.value);
+            const reason = adjustReason.value.trim();
+
+            if (isNaN(adj) || adj === 0) {
+                adjustErrorMsg.textContent = 'Please enter a valid non-zero adjustment quantity.';
+                adjustErrorMsg.classList.remove('d-none');
+                return;
+            }
+
+            if (currentStockVal + adj < 0) {
+                adjustErrorMsg.textContent = 'Resulting stock cannot be negative!';
+                adjustErrorMsg.classList.remove('d-none');
+                return;
+            }
+
+            if (reason.length < 10) {
+                adjustErrorMsg.textContent = 'Please provide a valid reason (at least 10 characters).';
+                adjustErrorMsg.classList.remove('d-none');
+                return;
+            }
+
+            adjustSpinner.classList.remove('d-none');
+            btnSubmitAdjustment.disabled = true;
+
+            fetch('/inventory/adjust', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    product_id: pid,
+                    adjustment_quantity: adj,
+                    reason: reason
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    window.location.reload();
+                } else {
+                    adjustErrorMsg.textContent = data.message || 'Error occurred';
+                    adjustErrorMsg.classList.remove('d-none');
+                    adjustSpinner.classList.add('d-none');
+                    btnSubmitAdjustment.disabled = false;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                adjustErrorMsg.textContent = 'Network error. Please try again.';
+                adjustErrorMsg.classList.remove('d-none');
+                adjustSpinner.classList.add('d-none');
+                btnSubmitAdjustment.disabled = false;
+            });
+        });
+    });
+</script>
+`) %>

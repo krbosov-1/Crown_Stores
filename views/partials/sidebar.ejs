@@ -1,0 +1,113 @@
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+        <div class="sidebar-logo-icon me-2">
+            <div style="width: 32px; height: 32px; background-color: var(--color-primary); border-radius: var(--border-radius-sm); display: flex; align-items: center; justify-content: center;">
+                <div style="width: 16px; height: 16px; background-color: white; border-radius: 2px;"></div>
+            </div>
+        </div>
+        <div class="sidebar-logo-text">
+            <span class="sidebar-logo-title">Crown Stores</span>
+            <span class="sidebar-logo-subtitle">Management System</span>
+        </div>
+    </div>
+    
+    <nav class="sidebar-nav">
+        <% const navPath = typeof currentPath !== 'undefined' ? currentPath : (typeof path !== 'undefined' ? path : ''); %>
+        
+        <% if (user && user.role === 'director') { %>
+            <div class="sidebar-section-title">Overview</div>
+            <a href="/dashboard" class="sidebar-link <%= navPath === '/dashboard' ? 'active' : '' %>">
+                <i class="bi bi-grid-1x2"></i>
+                <span>Dashboard</span>
+            </a>
+            
+            <div class="sidebar-section-title">Operations</div>
+            <a href="/sales" class="sidebar-link <%= navPath === '/sales' ? 'active' : '' %>">
+                <i class="bi bi-receipt"></i>
+                <span>Sales History</span>
+            </a>
+            <a href="/cashier-balancing" class="sidebar-link <%= navPath.startsWith('/cashier-balancing') ? 'active' : '' %>">
+                <i class="bi bi-cash-stack"></i>
+                <span>Cashier Balancing</span>
+            </a>
+            <a href="/reports" class="sidebar-link <%= navPath.startsWith('/reports') ? 'active' : '' %>">
+                <i class="bi bi-bar-chart"></i>
+                <span>Company Reports</span>
+            </a>
+            
+        <% } else if (user && user.role === 'manager') { %>
+            <div class="sidebar-section-title">Overview</div>
+            <a href="/dashboard" class="sidebar-link <%= navPath === '/dashboard' ? 'active' : '' %>">
+                <i class="bi bi-grid-1x2"></i>
+                <span>Dashboard</span>
+            </a>
+            
+            <div class="sidebar-section-title">Catalog</div>
+            <a href="/categories" class="sidebar-link <%= navPath.startsWith('/categories') ? 'active' : '' %>">
+                <i class="bi bi-tags"></i>
+                <span>Categories</span>
+            </a>
+            <a href="/products" class="sidebar-link <%= navPath.startsWith('/products') ? 'active' : '' %>">
+                <i class="bi bi-box-seam"></i>
+                <span>Products</span>
+            </a>
+            
+            <div class="sidebar-section-title">Operations</div>
+            <a href="/procurement" class="sidebar-link <%= navPath.startsWith('/procurement') ? 'active' : '' %>">
+                <i class="bi bi-truck"></i>
+                <span>Procurement</span>
+            </a>
+            <a href="/inventory" class="sidebar-link <%= navPath.startsWith('/inventory') ? 'active' : '' %>">
+                <i class="bi bi-inboxes"></i>
+                <span>Inventory</span>
+            </a>
+            <a href="/sales" class="sidebar-link <%= navPath === '/sales' ? 'active' : '' %>">
+                <i class="bi bi-receipt"></i>
+                <span>Sales</span>
+            </a>
+            <a href="/cashier-balancing" class="sidebar-link <%= navPath.startsWith('/cashier-balancing') ? 'active' : '' %>">
+                <i class="bi bi-cash-stack"></i>
+                <span>Cashier Balancing</span>
+            </a>
+            <a href="/reports" class="sidebar-link <%= navPath.startsWith('/reports') ? 'active' : '' %>">
+                <i class="bi bi-bar-chart-line"></i>
+                <span>Reports</span>
+            </a>
+            
+        <% } else if (user && user.role === 'sales_agent') { %>
+            <div class="sidebar-section-title">Overview</div>
+            <a href="/dashboard" class="sidebar-link <%= navPath === '/dashboard' ? 'active' : '' %>">
+                <i class="bi bi-grid-1x2"></i>
+                <span>Dashboard</span>
+            </a>
+            
+            <div class="sidebar-section-title">Point of Sale</div>
+            <a href="/sales/pos" class="sidebar-link <%= navPath === '/sales/pos' ? 'active' : '' %>">
+                <i class="bi bi-cart-plus"></i>
+                <span>New Sale (POS)</span>
+            </a>
+            <a href="/sales" class="sidebar-link <%= navPath === '/sales' ? 'active' : '' %>">
+                <i class="bi bi-receipt-cutoff"></i>
+                <span>Sales History</span>
+            </a>
+        <% } else { %>
+            <div class="sidebar-section-title">Welcome</div>
+            <a href="/auth/login" class="sidebar-link">
+                <i class="bi bi-box-arrow-in-right"></i>
+                <span>Login</span>
+            </a>
+        <% } %>
+    </nav>
+    
+    <% if (user) { 
+        const initials = user.full_name ? user.full_name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase() : 'U';
+    %>
+    <div class="sidebar-user">
+        <div class="sidebar-user-avatar"><%= initials %></div>
+        <div class="sidebar-user-info">
+            <span class="sidebar-user-name" title="<%= user.full_name %>"><%= user.full_name %></span>
+            <span class="sidebar-user-role"><%= user.role.replace('_', ' ') %></span>
+        </div>
+    </div>
+    <% } %>
+</aside>

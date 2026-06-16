@@ -1,0 +1,253 @@
+<% layout('layouts/main') -%>
+
+<!-- Row 1: KPI Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card h-100 p-4 d-flex flex-row align-items-center gap-3">
+            <div class="rounded bg-primary-light text-primary d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                <i class="bi bi-currency-dollar fs-4"></i>
+            </div>
+            <div>
+                <p class="text-muted mb-1 small fw-medium">Total Today Sales</p>
+                <h4 class="mb-0 fw-bold">$<%= stats.todaySales.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></h4>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card h-100 p-4 d-flex flex-row align-items-center gap-3">
+            <div class="rounded bg-success-light text-success d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                <i class="bi bi-box-seam fs-4"></i>
+            </div>
+            <div>
+                <p class="text-muted mb-1 small fw-medium">Inventory Value</p>
+                <h4 class="mb-0 fw-bold">$<%= stats.inventoryValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></h4>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card h-100 p-4 d-flex flex-row align-items-center gap-3">
+            <div class="rounded bg-warning-light text-warning d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                <i class="bi bi-shop fs-4"></i>
+            </div>
+            <div>
+                <p class="text-muted mb-1 small fw-medium">Active Branches</p>
+                <h4 class="mb-0 fw-bold"><%= stats.activeBranches %></h4>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card h-100 p-4 d-flex flex-row align-items-center gap-3">
+            <div class="rounded bg-danger-light text-danger d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                <i class="bi bi-tags fs-4"></i>
+            </div>
+            <div>
+                <p class="text-muted mb-1 small fw-medium">Active Products</p>
+                <h4 class="mb-0 fw-bold"><%= stats.activeProducts %></h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 2: Charts (Line & Doughnut) -->
+<div class="row g-4 mb-4">
+    <div class="col-12 col-lg-8">
+        <div class="card h-100">
+            <div class="card-header bg-transparent border-0 pt-4 pb-0">
+                <h6 class="fw-bold mb-0">Sales Last 7 Days</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="sales7DaysChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-4">
+        <div class="card h-100">
+            <div class="card-header bg-transparent border-0 pt-4 pb-0">
+                <h6 class="fw-bold mb-0">Top Categories This Month</h6>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+                <% if(chartCategories.length > 0) { %>
+                    <canvas id="topCategoriesChart" height="200"></canvas>
+                <% } else { %>
+                    <div class="text-center text-muted">
+                        <i class="bi bi-pie-chart mb-2 fs-2 d-block"></i>
+                        <p class="mb-0">No data available</p>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 3: Bar Chart -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-transparent border-0 pt-4 pb-0">
+                <h6 class="fw-bold mb-0">Branch Performance This Month</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="branchSalesChart" height="80"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 4: Data Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-transparent border-0 pt-4 pb-0">
+                <h6 class="fw-bold mb-0">Branch Performance Summary</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Branch</th>
+                                <th>Today's Sales</th>
+                                <th>Inventory Value</th>
+                                <th>Low Stock Items</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if(branchTable.length > 0) { %>
+                                <% branchTable.forEach(b => { %>
+                                <tr>
+                                    <td class="fw-medium"><%= b.branch %></td>
+                                    <td>$<%= b.today_sales.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
+                                    <td>$<%= b.inventory_value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
+                                    <td>
+                                        <% if(b.low_stock_count > 0) { %>
+                                            <span class="badge bg-warning text-dark"><%= b.low_stock_count %> items</span>
+                                        <% } else { %>
+                                            <span class="text-muted">0 items</span>
+                                        <% } %>
+                                    </td>
+                                    <td>
+                                        <% if(b.status === 'active') { %>
+                                            <span class="badge bg-success-light text-success">Active</span>
+                                        <% } else { %>
+                                            <span class="badge bg-danger-light text-danger">Inactive</span>
+                                        <% } %>
+                                    </td>
+                                </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">
+                                        <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                                        No branch data available
+                                    </td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<% block('scripts').append(`
+<script>
+    const chartSales7Days = ${JSON.stringify(chartSales7Days)};
+    const chartBranchSales = ${JSON.stringify(chartBranchSales)};
+    const chartCategories = ${JSON.stringify(chartCategories)};
+    
+    // Theme Colors
+    const primaryColor = '#1B4FD8';
+    const primaryLight = '#EEF2FF';
+    const accentColor = '#F97316';
+    const successColor = '#16A34A';
+    const warningColor = '#D97706';
+    const dangerColor = '#DC2626';
+    const borderColor = '#E2E8F0';
+    
+    // Set default Chart.js font
+    Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+    Chart.defaults.color = '#64748B';
+
+    // 1. Sales Last 7 Days (Line Chart)
+    if(document.getElementById('sales7DaysChart')) {
+        new Chart(document.getElementById('sales7DaysChart'), {
+            type: 'line',
+            data: {
+                labels: chartSales7Days.map(d => d.date),
+                datasets: [{
+                    label: 'Sales ($)',
+                    data: chartSales7Days.map(d => d.total),
+                    borderColor: primaryColor,
+                    backgroundColor: primaryLight,
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true,
+                    pointBackgroundColor: primaryColor,
+                    pointBorderColor: '#fff',
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: borderColor } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    // 2. Top Categories This Month (Doughnut Chart)
+    if(document.getElementById('topCategoriesChart') && chartCategories.length > 0) {
+        new Chart(document.getElementById('topCategoriesChart'), {
+            type: 'doughnut',
+            data: {
+                labels: chartCategories.map(c => c.category_name),
+                datasets: [{
+                    data: chartCategories.map(c => c.total),
+                    backgroundColor: [primaryColor, accentColor, successColor, warningColor, dangerColor],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                cutout: '70%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } }
+                }
+            }
+        });
+    }
+
+    // 3. Branch Performance This Month (Bar Chart)
+    if(document.getElementById('branchSalesChart')) {
+        new Chart(document.getElementById('branchSalesChart'), {
+            type: 'bar',
+            data: {
+                labels: chartBranchSales.map(b => b.branch_name),
+                datasets: [{
+                    label: 'Sales ($)',
+                    data: chartBranchSales.map(b => b.total),
+                    backgroundColor: primaryColor,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: borderColor } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+</script>
+`) %>

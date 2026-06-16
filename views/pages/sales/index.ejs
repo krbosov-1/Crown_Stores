@@ -1,0 +1,97 @@
+<% layout('layouts/main') -%>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0">Sales History</h4>
+    <a href="/sales/pos" class="btn btn-primary d-flex align-items-center gap-2 px-4 shadow-sm fw-medium">
+        <i class="bi bi-plus-lg"></i> New Sale (POS)
+    </a>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+        <form method="GET" action="/sales" class="row g-3">
+            <div class="col-12 col-md-3">
+                <label class="form-label text-muted small fw-bold text-uppercase mb-1">Date From</label>
+                <input type="date" class="form-control bg-light border-0" name="date_from" value="<%= filters.date_from || '' %>">
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label text-muted small fw-bold text-uppercase mb-1">Date To</label>
+                <input type="date" class="form-control bg-light border-0" name="date_to" value="<%= filters.date_to || '' %>">
+            </div>
+            <% if (userRole !== 'sales_agent') { %>
+                <div class="col-12 col-md-3">
+                    <label class="form-label text-muted small fw-bold text-uppercase mb-1">Agent Name</label>
+                    <input type="text" class="form-control bg-light border-0" name="agent" placeholder="Search agent name..." value="<%= filters.agent || '' %>">
+                </div>
+            <% } %>
+            <div class="col-12 col-md-3 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-dark w-100 fw-medium shadow-sm">Apply</button>
+                <a href="/sales" class="btn border border-light text-muted bg-white shadow-sm px-3" title="Clear Filters"><i class="bi bi-x-lg"></i></a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4 py-3 text-uppercase small text-muted fw-bold">Sale #</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold">Date & Time</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold text-center">Items</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold text-end">Total</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold text-end">Paid</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold text-end">Change</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold">Agent</th>
+                        <th class="py-3 text-uppercase small text-muted fw-bold text-center pe-4">Receipt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if(sales && sales.length > 0) { %>
+                        <% sales.forEach(sale => { %>
+                            <tr>
+                                <td class="ps-4 fw-bold font-monospace text-dark">TRX-<%= String(sale.id).padStart(6, '0') %></td>
+                                <td class="text-muted small fw-medium">
+                                    <div class="d-flex flex-column">
+                                        <span class="text-dark"><%= new Date(sale.sale_date).toLocaleDateString() %></span>
+                                        <span style="font-size:0.75rem;"><%= new Date(sale.sale_date).toLocaleTimeString() %></span>
+                                    </div>
+                                </td>
+                                <td class="text-center"><span class="badge bg-light text-dark border px-2 py-1"><%= sale.items_count %></span></td>
+                                <td class="text-end fw-bold text-dark font-monospace h6 mb-0">UGX <%= parseFloat(sale.total_amount).toLocaleString() %></td>
+                                <td class="text-end text-success font-monospace small">UGX <%= parseFloat(sale.amount_paid).toLocaleString() %></td>
+                                <td class="text-end text-muted font-monospace small">UGX <%= parseFloat(sale.change_given).toLocaleString() %></td>
+                                <td class="text-muted small fw-medium">
+                                    <i class="bi bi-person me-1"></i><%= sale.agent_name || 'System' %>
+                                </td>
+                                <td class="text-center pe-4">
+                                    <a href="/receipts/<%= sale.id %>" class="btn btn-sm btn-light border rounded-circle text-primary" title="View Receipt" style="width: 32px; height: 32px; display: inline-flex; align-items:center; justify-content:center;">
+                                        <i class="bi bi-receipt"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">
+                                <div class="bg-light rounded-circle d-inline-flex justify-content-center align-items-center mb-3 shadow-sm border" style="width: 64px; height: 64px;">
+                                    <i class="bi bi-cart-x fs-2"></i>
+                                </div>
+                                <h6 class="fw-bold text-dark">No sales records found</h6>
+                                <p class="small mb-0">Sales transactions will appear here.</p>
+                            </td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <% if(pagination && pagination.totalPages > 1) { %>
+        <div class="card-footer bg-transparent border-top p-4 d-flex justify-content-between align-items-center">
+            <span class="text-muted small fw-medium">Showing page <%= pagination.page %> of <%= pagination.totalPages %></span>
+            <%- include('../../partials/pagination', { pagination: pagination, baseUrl: '/sales', queryParams: filters }) %>
+        </div>
+    <% } %>
+</div>
