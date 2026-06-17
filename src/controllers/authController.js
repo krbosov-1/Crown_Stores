@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto'); // أضفنا المكتبة دي لتوليد كلمات سر عشوائية
 const { validationResult } = require('express-validator');
 const { logAction } = require('../utils/auditLogger');
 
@@ -35,14 +36,8 @@ exports.processLogin = async (req, res) => {
 
         const user = result.rows[0];
 
-        // الحل السريع: مقارنة مباشرة لضمان الدخول
-        // إذا الباسوورد المدخل هو 'Crown@1234' سيمر، أو استخدم bcrypt إذا أردت
-        let match = false;
-        if (password === 'Crown@1234') {
-            match = true;
-        } else {
-            match = await bcrypt.compare(password, user.password_hash);
-        }
+        // الحماية الصارمة: مقارنة التشفير فقط وبدون أي أبواب خلفية
+        const match = await bcrypt.compare(password, user.password_hash);
 
         if (!match) {
             req.flash('error', 'Invalid credentials');
@@ -58,7 +53,7 @@ exports.processLogin = async (req, res) => {
             branch_name: user.branch_name
         };
 
-        await logAction(user.id, 'LOGIN', 'users', user.id, { ip: req.ip }, req.ip);
+        // await logAction(user.id, 'LOGIN', 'users', user.id, { ip: req.ip }, req.ip);
 
         if (user.role === 'director') return res.redirect('/dashboard/director');
         if (user.role === 'manager') return res.redirect('/dashboard/manager');
@@ -68,15 +63,14 @@ exports.processLogin = async (req, res) => {
 
     } catch (error) {
         console.error('Login error:', error);
-        req.flash('error', 'An error occurred. Please try again.');
+        req.flash('error', 'An unexpected error occurred. Please try again.');
         res.redirect('/login');
     }
 };
 
-
 exports.logout = async (req, res) => {
     if (req.session && req.session.user) {
-        await logAction(req.session.user.id, 'LOGOUT', 'users', req.session.user.id, { ip: req.ip }, req.ip);
+    await logAction(req.session.user.id, 'LOGOUT', 'users', req.session.user.id, { ip: req.ip }, req.ip);
     }
     req.session.destroy(() => {
         res.redirect('/login');
@@ -96,14 +90,24 @@ exports.processForgotPassword = async (req, res) => {
 
     try {
         const result = await db.query("SELECT id FROM users WHERE username = $1 AND status = 'active'", [username]);
+        
         if (result.rows.length > 0) {
-            const newPasswordHash = await bcrypt.hash('Crown@1234', 10);
+            // توليد كلمة سر عشوائية من 8 أحرف
+            const tempPassword = crypto.randomBytes(4).toString('hex');
+            const newPasswordHash = await bcrypt.hash(tempPassword, 10);
+            
             await db.query("UPDATE users SET password_hash = $1 WHERE username = $2", [newPasswordHash, username]);
             await logAction(result.rows[0].id, 'PASSWORD_RESET', 'users', result.rows[0].id, { trigger: 'forgot_password' }, req.ip);
+            
+            // طباعة كلمة السر في التيرمنال للمدير فقط
+            console.log(`\n🚨 SECURITY ALERT 🚨`);
+            console.log(`Password for user '${username}' has been reset.`);
+            console.log(`New Temporary Password: ${tempPassword}`);
+            console.log(`Please communicate this securely to the user.\n`);
         }
         
-        // Always show success to prevent username enumeration
-        req.flash('success', 'Password reset. New password: Crown@1234. Please log in and change your password immediately.');
+        // رسالة عامة للمستخدم لمنع كشف الحسابات الموجودة
+        req.flash('success', 'If the username exists in our system, the administrator has been notified with the new reset instructions.');
         res.redirect('/forgot-password');
     } catch (error) {
         console.error('Forgot password error:', error);

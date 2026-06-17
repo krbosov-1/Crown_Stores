@@ -1,4 +1,5 @@
-require('dotenv').config();
+require('dotenv').config(); // تم تصليح حرف R
+
 const express = require('express');
 const path = require('path');
 const session = require('express-session');
@@ -6,18 +7,19 @@ const flash = require('connect-flash');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const engine = require('ejs-mate');
+const compression = require('compression'); // إضافة الضغط لتسريع النظام
 
 const app = express();
 
 // Set trust proxy to fix express-rate-limit behind a reverse proxy
 app.set('trust proxy', 1);
 
-// 1. helmet() with CSP
+// 1. الأمان: Helmet مع CSP صارم (تم إزالة unsafe-inline من السكربتات)
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+            scriptSrc: ["'self'", "https://cdn.jsdelivr.net"], // منع الأكواد المدمجة للحماية من XSS
             styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://fonts.googleapis.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net"],
             imgSrc: ["'self'", "data:", "https:"],
@@ -30,14 +32,25 @@ app.use(helmet({
     xFrameOptions: { action: 'sameorigin' }
 }));
 
-// 2. express.json() + express.urlencoded({ extended: true })
+// 2. حماية من الهجمات: Rate Limiting عام لكل النظام
+const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 دقيقة
+    max: 150, // أقصى عدد طلبات لكل IP
+    message: 'Too many requests from this IP, please try again later.'
+});
+app.use(globalLimiter);
+
+// 3. السرعة: Compression لضغط الملفات
+app.use(compression());
+
+// 4. معالجة البيانات
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 3. express.static('public')
+// 5. الملفات الثابتة
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 4. session config
+// 6. إعدادات الجلسة (Session)
 app.use(session({
     secret: process.env.SESSION_SECRET || 'your_super_secret_key_here',
     resave: false,
@@ -49,27 +62,31 @@ app.use(session({
     }
 }));
 
-// 5. connect-flash setup
+// 7. connect-flash setup
 app.use(flash());
 
-// 6. res.locals middleware
+// 8. res.locals middleware
 app.use((req, res, next) => {
     res.locals.user = req.session.user || null;
     res.locals.messages = req.flash();
     res.locals.currentPath = req.path;
     res.locals.path = req.path;
-    res.locals.unreadCount = 0; // will be dynamically overridden if needed on client side or route
+    res.locals.unreadCount = 0; 
     next();
 });
 
-// 7. ejs-mate as view engine, views folder set
+// 9. ejs-mate as view engine
 app.engine('ejs', engine);
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
-// 8. All route imports and app.use() mounts
-const authRouter = require('./src/routes/auth');
+// تشغيل الكاش في حالة الإنتاج لتخفيف الضغط
+if (process.env.NODE_ENV === 'production') {
+    app.set('view cache', true);
+}
 
+// 10. All route imports and app.use() mounts
+const authRouter = require('./src/routes/auth');
 const dashboardRouter = require('./src/routes/dashboard');
 const categoriesRouter = require('./src/routes/categories');
 const productsRouter = require('./src/routes/products');
@@ -100,19 +117,19 @@ app.get('/', (req, res) => {
     res.redirect('/login');
 });
 
-// 9. 404 handler
+// 11. 404 handler
 app.use((req, res, next) => {
     res.status(404).render('pages/errors/404', { message: 'Page Not Found' });
 });
 
-// 10. Global error handler (500)
+// 12. Global error handler (500)
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).render('pages/errors/500', { message: 'Internal Server Error' });
 });
 
-// 11. app.listen()
-const PORT = 3000;
+// 13. app.listen() ديناميكي
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
 });

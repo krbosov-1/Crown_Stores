@@ -15,6 +15,7 @@ exports.directorDashboard = async (req, res) => {
         const userId = req.session.user.id;
         const unreadCount = await getUnreadCount(userId);
 
+        // تحسين الأداء: استخدام CURRENT_DATE مباشرة بدون دالة DATE() لتفعيل الفهارس (Indexes)
         const [
             todaySalesRes, 
             inventoryValueRes, 
@@ -25,26 +26,26 @@ exports.directorDashboard = async (req, res) => {
             categoriesRes,
             branchTableRes
         ] = await Promise.all([
-            db.query('SELECT COALESCE(SUM(total_amount), 0) AS total FROM sales WHERE DATE(sale_date) = CURRENT_DATE'),
+            db.query('SELECT COALESCE(SUM(total_amount), 0) AS total FROM sales WHERE sale_date >= CURRENT_DATE'),
             db.query(`SELECT COALESCE(SUM(i.quantity_available * p.selling_price), 0) AS total 
                       FROM inventory i JOIN products p ON i.product_id = p.id WHERE p.status = 'active'`),
             db.query(`SELECT COUNT(*) AS total FROM branches WHERE status = 'active'`),
             db.query(`SELECT COUNT(*) AS total FROM products WHERE status = 'active'`),
             db.query(`
                 WITH dates AS (
-                    SELECT current_date - i as date
+                    SELECT CAST(current_date - i AS DATE) as date
                     FROM generate_series(0, 6) i
                 )
                 SELECT d.date, COALESCE(SUM(s.total_amount), 0) as total
                 FROM dates d
-                LEFT JOIN sales s ON DATE(s.sale_date) = d.date
+                LEFT JOIN sales s ON s.sale_date >= d.date AND s.sale_date < d.date + 1
                 GROUP BY d.date
                 ORDER BY d.date ASC
             `),
             db.query(`
                 SELECT b.name as branch_name, COALESCE(SUM(s.total_amount), 0) as total 
                 FROM branches b 
-                LEFT JOIN sales s ON b.id = s.branch_id AND DATE_TRUNC('month', s.sale_date) = DATE_TRUNC('month', CURRENT_DATE) 
+                LEFT JOIN sales s ON b.id = s.branch_id AND s.sale_date >= DATE_TRUNC('month', CURRENT_DATE)
                 WHERE b.status = 'active' 
                 GROUP BY b.id, b.name 
                 ORDER BY total DESC
@@ -54,8 +55,7 @@ exports.directorDashboard = async (req, res) => {
                 FROM categories c
                 JOIN products p ON c.id = p.category_id
                 JOIN sale_items si ON p.id = si.product_id
-                JOIN sales s ON si.sale_id = s.id
-                WHERE DATE_TRUNC('month', s.sale_date) = DATE_TRUNC('month', CURRENT_DATE) 
+                JOIN sales s ON si.sale_id = s.id AND s.sale_date >= DATE_TRUNC('month', CURRENT_DATE)
                 GROUP BY c.id, c.name 
                 ORDER BY total DESC 
                 LIMIT 5
@@ -68,7 +68,7 @@ exports.directorDashboard = async (req, res) => {
                     (SELECT COUNT(*) FROM inventory i JOIN products p ON i.product_id = p.id WHERE i.branch_id = b.id AND i.quantity_available < p.reorder_level AND p.status = 'active') as low_stock_count, 
                     b.status 
                 FROM branches b 
-                LEFT JOIN sales s ON b.id = s.branch_id AND DATE(s.sale_date) = CURRENT_DATE 
+                LEFT JOIN sales s ON b.id = s.branch_id AND s.sale_date >= CURRENT_DATE 
                 GROUP BY b.id, b.name, b.status 
                 ORDER BY today_sales DESC
             `)
@@ -145,8 +145,8 @@ exports.managerDashboard = async (req, res) => {
             recentProcurementsRes,
             recentSalesRes
         ] = await Promise.all([
-            db.query('SELECT COALESCE(SUM(total_amount), 0) as total, COUNT(*) as tx_count FROM sales WHERE branch_id = $1 AND DATE(sale_date) = CURRENT_DATE', [branchId]),
-            db.query(`SELECT COUNT(*) as total FROM products WHERE branch_id = $1 AND status = 'active'`, [branchId]),
+            db.query('SELECT COALESCE(SUM(total_amount), 0) as total, COUNT(*) as tx_count FROM sales WHERE branch_id = $1 AND sale_date >= CURRENT_DATE', [branchId]),
+            db.query(`SELECT COUNT(*) as total FROM products WHERE status = 'active'`),
             db.query(`SELECT COUNT(*) as total FROM inventory i JOIN products p ON i.product_id = p.id WHERE i.branch_id = $1 AND i.quantity_available < p.reorder_level AND i.quantity_available > 0 AND p.status = 'active'`, [branchId]),
             db.query(`SELECT COUNT(*) as total FROM inventory i JOIN products p ON i.product_id = p.id WHERE i.branch_id = $1 AND i.quantity_available = 0 AND p.status = 'active'`, [branchId]),
             db.query(`SELECT p.name, i.quantity_available as qty, p.reorder_level FROM inventory i JOIN products p ON i.product_id = p.id WHERE i.branch_id = $1 AND i.quantity_available < p.reorder_level AND i.quantity_available > 0 AND p.status = 'active' ORDER BY (i.quantity_available::float / p.reorder_level::float) ASC LIMIT 10`, [branchId]),
@@ -188,10 +188,7 @@ exports.managerDashboard = async (req, res) => {
             currentPath: '/dashboard',
             unreadCount: 0,
             stats: { todaySales: 0, transactionsCount: 0, activeProducts: 0, lowStock: 0, outOfStock: 0 },
-            lowStockList: [],
-            outOfStockList: [],
-            recentProcurements: [],
-            recentSales: []
+            lowStockList: [], outOfStockList: [], recentProcurements: [], recentSales: []
         });
     }
 };
@@ -206,8 +203,8 @@ exports.agentDashboard = async (req, res) => {
             monthSalesRes,
             recentSalesRes
         ] = await Promise.all([
-            db.query('SELECT COUNT(*) as sale_count, COALESCE(SUM(total_amount), 0) as total_revenue FROM sales WHERE sales_agent_id = $1 AND DATE(sale_date) = CURRENT_DATE', [userId]),
-            db.query(`SELECT COALESCE(SUM(total_amount), 0) as total FROM sales WHERE sales_agent_id = $1 AND DATE_TRUNC('month', sale_date) = DATE_TRUNC('month', CURRENT_DATE)`, [userId]),
+            db.query('SELECT COUNT(*) as sale_count, COALESCE(SUM(total_amount), 0) as total_revenue FROM sales WHERE sales_agent_id = $1 AND sale_date >= CURRENT_DATE', [userId]),
+            db.query(`SELECT COALESCE(SUM(total_amount), 0) as total FROM sales WHERE sales_agent_id = $1 AND sale_date >= DATE_TRUNC('month', CURRENT_DATE)`, [userId]),
             db.query(`SELECT s.id as sale_id, s.sale_date as time, COALESCE((SELECT SUM(quantity) FROM sale_items WHERE sale_id = s.id), 0) as items_count, s.total_amount as total, s.amount_paid, s.change_given FROM sales s WHERE s.sales_agent_id = $1 ORDER BY s.sale_date DESC LIMIT 10`, [userId])
         ]);
 

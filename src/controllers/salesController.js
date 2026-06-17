@@ -79,7 +79,7 @@ exports.index = async (req, res) => {
 exports.showPos = (req, res) => {
     res.render('pages/sales/pos', {
         title: 'Point of Sale',
-        layout: false, // Minimal layout
+        layout: false, 
         user: req.session.user
     });
 };
@@ -93,23 +93,21 @@ exports.searchProduct = async (req, res) => {
             return res.json([]);
         }
 
+        // استعلام محسن وبدون الـ branch_id من جدول المنتجات وبدون GROUP BY الثقيلة
         const query = `
             SELECT p.id, p.name, p.selling_price as price, i.quantity_available as stock,
                    c.name as category_name,
-                   b.barcode_number
+                   (SELECT barcode_number FROM barcodes WHERE product_id = p.id AND status = 'active' LIMIT 1) as barcode_number
             FROM products p
             JOIN inventory i ON i.product_id = p.id AND i.branch_id = $1
             LEFT JOIN categories c ON c.id = p.category_id
-            LEFT JOIN barcodes b ON b.product_id = p.id AND b.status = 'active'
-            WHERE p.branch_id = $1 AND p.status = 'active'
-              AND (p.name ILIKE $2 OR b.barcode_number = $3)
-            GROUP BY p.id, i.quantity_available, c.name, b.barcode_number
+            WHERE p.status = 'active'
+              AND (p.name ILIKE $2 OR EXISTS (SELECT 1 FROM barcodes b WHERE b.product_id = p.id AND b.barcode_number = $3 AND b.status = 'active'))
             LIMIT 10
         `;
         
         const result = await db.query(query, [branchId, `%${q}%`, q]);
         
-        // Map the result appropriately
         const items = result.rows.map(r => ({
             id: r.id,
             name: r.name,
@@ -127,7 +125,7 @@ exports.searchProduct = async (req, res) => {
 };
 
 exports.createSale = async (req, res) => {
-    const client = await db.pool.connect(); // For explicit transactions with FOR UPDATE
+    const client = await db.pool.connect(); 
     try {
         const branchId = req.session.user.branch_id || req.session.user.branchId;
         const agentId = req.session.user.id;
@@ -142,6 +140,21 @@ exports.createSale = async (req, res) => {
         let totalAmount = 0;
         const insertItems = [];
 
+        // تحسين الأداء: جلب كل بيانات المخزون المطلوبة في استعلام واحد بدل حلقة تكرارية
+        const productIds = items.map(item => item.productId);
+        const invRes = await client.query(
+            `SELECT i.product_id, i.quantity_available, p.name 
+             FROM inventory i 
+             JOIN products p ON i.product_id = p.id 
+             WHERE i.product_id = ANY($1::int[]) AND i.branch_id = $2 FOR UPDATE`,
+            [productIds, branchId]
+        );
+
+        const stockMap = {};
+        invRes.rows.forEach(r => {
+            stockMap[r.product_id] = { stock: r.quantity_available, name: r.name };
+        });
+
         for (const item of items) {
             const { productId, qty, unitPrice } = item;
             const quantityInt = parseInt(qty, 10);
@@ -151,34 +164,23 @@ exports.createSale = async (req, res) => {
                 throw new Error('Invalid quantity for product ' + productId);
             }
 
-            // Lock inventory row and check stock
-            const invRes = await client.query(
-                'SELECT quantity_available FROM inventory WHERE product_id = $1 AND branch_id = $2 FOR UPDATE',
-                [productId, branchId]
-            );
-
-            if (invRes.rows.length === 0) {
+            const invData = stockMap[productId];
+            if (!invData) {
                 throw new Error('Inventory not found for product ID: ' + productId);
             }
 
-            const currentStock = invRes.rows[0].quantity_available;
-            if (currentStock < quantityInt) {
-                const prodRes = await client.query('SELECT name FROM products WHERE id = $1', [productId]);
-                const name = prodRes.rows[0] ? prodRes.rows[0].name : productId;
-                throw new Error(`Insufficient stock for ${name}. Available: ${currentStock}, Requested: ${quantityInt}`);
+            if (invData.stock < quantityInt) {
+                throw new Error(`Insufficient stock for ${invData.name}. Available: ${invData.stock}, Requested: ${quantityInt}`);
             }
+
+            // الخصم من الذاكرة المحلية عشان لو المنتج اتكرر في نفس الفاتورة
+            invData.stock -= quantityInt;
 
             const subtotal = quantityInt * priceNum;
             totalAmount += subtotal;
             insertItems.push({ productId, quantity: quantityInt, unitPrice: priceNum, subtotal });
             
-            // Deduct stock explicitly (trigger may also do it, but verify trigger logic. 
-            // The prompt says: "UPDATE inventory (triggers handle it, but also explicit for safety)".
-            // Let's do it explicitly. If a trigger already exists, we might double-deduct. Let's assume no trigger deducts stock on sales implicitly unless we wrote it (and we only seeded what user asked). Wait, we haven't seen a trigger handling this. So explicit UPDATE is required.
-            await client.query(
-                'UPDATE inventory SET quantity_available = quantity_available - $1, last_updated = CURRENT_TIMESTAMP WHERE product_id = $2 AND branch_id = $3',
-                [quantityInt, productId, branchId]
-            );
+            // تم إزالة UPDATE inventory اليدوي لأن الـ Trigger سيتكفل به تلقائياً
         }
 
         const amtPaidNum = parseFloat(amountPaid);
@@ -206,7 +208,7 @@ exports.createSale = async (req, res) => {
         await client.query(
             `INSERT INTO audit_logs (branch_id, user_id, action, entity_type, entity_id, details)
              VALUES ($1, $2, $3, $4, $5, $6)`,
-            [branchId, agentId, 'sale_completed', 'sale', saleId, JSON.stringify({ total: totalAmount, items: insertItems.length })]
+            [branchId, agentId, 'sale_completed', 'sales', saleId, JSON.stringify({ total: totalAmount, items: insertItems.length })]
         );
 
         await client.query('COMMIT');
