@@ -135,6 +135,6 @@ csrms/
 | `DB_USER`      | Target PostgreSQL database user              | `postgres`                          |
 | `DB_PASSWORD`  | Default target password for credentials      | `mysecret`                          |
 | `DB_HOST`      | URL mapping of the target PostgreSQL instance| `127.0.0.1`                         |
-| `DB_PORT`      | Configured port routing for postgres         | `5432`                              |
+| `DB_PORT`      | Configured port routing for postgres         | `5433`                              |
 | `SESSION_SECRET`| Cryptographic encryption key for user sessions| `complex_production_grade_token`    |
 | `NODE_ENV`     | Switch logic routing between prod and dev    | `development`                       |
