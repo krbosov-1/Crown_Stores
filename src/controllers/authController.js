@@ -53,7 +53,7 @@ exports.processLogin = async (req, res) => {
             branch_name: user.branch_name
         };
 
-        // await logAction(user.id, 'LOGIN', 'users', user.id, { ip: req.ip }, req.ip);
+        await logAction(user.id, 'LOGIN', 'users', user.id, { ip: req.ip }, req.ip);
 
         if (user.role === 'director') return res.redirect('/dashboard/director');
         if (user.role === 'manager') return res.redirect('/dashboard/manager');
