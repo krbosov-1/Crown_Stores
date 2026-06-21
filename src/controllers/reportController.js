@@ -19,7 +19,9 @@ exports.index = async (req, res) => {
         const branchesRes = await db.query('SELECT id, name FROM branches WHERE status = $1', ['active']);
         const allBranches = branchesRes.rows;
 
+        // ==========================================
         // 1. Sales Report Data
+        // ==========================================
         let salesQuery = `
             SELECT s.sale_date, s.total_amount, si.quantity, p.name as product_name, c.name as category_name
             FROM sales s
@@ -36,9 +38,6 @@ exports.index = async (req, res) => {
 
         const salesRawRes = await db.query(salesQuery, salesParams);
         
-        const totalRevenue = salesRawRes.rows.reduce((sum, r) => sum + parseFloat(r.total_amount || 0), 0) / (salesRawRes.rows.length || 1); // approximate, since we duplicated sales by items
-        
-        // Wait, standardizing the aggregation
         let salesAggQuery = `
             SELECT COUNT(DISTINCT s.id) as trans_count, SUM(DISTINCT s.total_amount) as total_rev
             FROM sales s
@@ -52,30 +51,8 @@ exports.index = async (req, res) => {
         const salesAggRes = await db.query(salesAggQuery, aggParams);
         const transCount = parseInt(salesAggRes.rows[0].trans_count || 0);
         
-        let totalRev = 0;
-        if (role === 'manager' || branchId) {
-             const revRes = await db.query(`SELECT SUM(total_amount) as rev FROM sales WHERE DATE(sale_date) >= $1 AND DATE(sale_date) <= $2 AND branch_id = $3`, [date_from, date_to, branchId]);
-             totalRev = parseFloat(revRes.rows[0]?.rev || 0);
-        } else {
-             const revRes = await db.query(`SELECT SUM(total_amount) as rev FROM sales WHERE DATE(sale_date) >= $1 AND DATE(sale_date) <= $2`, [date_from, date_to]);
-             totalRev = parseFloat(revRes.rows[0]?.rev || 0);
-        }
-
+        let totalRev = parseFloat(salesAggRes.rows[0].total_rev || 0);
         const avgOrderValue = transCount > 0 ? totalRev / transCount : 0;
-
-        // Grouping for products
-        const topProductsMap = {};
-        salesRawRes.rows.forEach(r => {
-            if(!topProductsMap[r.product_name]) {
-                topProductsMap[r.product_name] = {
-                    name: r.product_name,
-                    category: r.category_name || 'N/A',
-                    qty: 0,
-                    revenue: 0
-                };
-            }
-            topProductsMap[r.product_name].qty += parseInt(r.quantity);
-        });
 
         const salesProductQuery = `
             SELECT p.name, c.name as category_name, SUM(si.quantity) as total_qty, SUM(si.subtotal) as total_revenue
@@ -99,7 +76,6 @@ exports.index = async (req, res) => {
         });
         const topProduct = salesProducts.length > 0 ? salesProducts[0].name : 'None';
 
-        // Revenue Over Time
         const revenueChartQuery = `
             SELECT DATE(sale_date) as dt, SUM(total_amount) as daily_revenue
             FROM sales
@@ -115,6 +91,123 @@ exports.index = async (req, res) => {
             revenueChartDates = [date_from, date_to];
             revenueChartData = [0, 0];
         }
+
+        // ==========================================
+        // 2. Inventory Report Data (البيانات الناقصة)
+        // ==========================================
+        let invQuery = `
+            SELECT p.name as product_name, c.name as category_name, i.quantity_available, p.reorder_level, 
+                   (i.quantity_available * p.cost_price) as stock_value
+            FROM inventory i
+            JOIN products p ON i.product_id = p.id
+            LEFT JOIN categories c ON p.category_id = c.id
+            WHERE 1=1
+        `;
+        let invParams = [];
+        if (role === 'manager' || (role === 'director' && branchId)) {
+            invQuery += ` AND i.branch_id = $1`;
+            invParams.push(branchId);
+        }
+        const invRes = await db.query(invQuery, invParams);
+        
+        let totalSkus = invRes.rows.length;
+        let totalInvValue = 0;
+        let lowStockCount = 0;
+        let outOfStockCount = 0;
+
+        const inventoryData = invRes.rows.map(r => {
+            let status = 'In Stock';
+            if (r.quantity_available <= 0) {
+                status = 'Out of Stock';
+                outOfStockCount++;
+            } else if (r.quantity_available <= r.reorder_level) {
+                status = 'Low Stock';
+                lowStockCount++;
+            }
+            totalInvValue += parseFloat(r.stock_value || 0);
+            return { ...r, status };
+        });
+
+        // ==========================================
+        // 3. Procurement Report Data (البيانات الناقصة)
+        // ==========================================
+        let procQuery = `
+            SELECT pr.created_at as pr_date, p.name as product_name, s.name as supplier_name, 
+                   pr.quantity_received, pr.unit_cost, (pr.quantity_received * pr.unit_cost) as total_cost, u.full_name
+            FROM procurement pr
+            JOIN products p ON pr.product_id = p.id
+            LEFT JOIN suppliers s ON pr.supplier_id = s.id
+            LEFT JOIN users u ON pr.received_by = u.id
+            WHERE DATE(pr.created_at) >= $1 AND DATE(pr.created_at) <= $2
+        `;
+        let procParams = [date_from, date_to];
+        if (role === 'manager' || (role === 'director' && branchId)) {
+            procQuery += ` AND pr.branch_id = $3`;
+            procParams.push(branchId);
+        }
+        const procRes = await db.query(procQuery, procParams);
+        
+        let totalProcUnits = 0;
+        let totalProcCost = 0;
+        procRes.rows.forEach(r => {
+            totalProcUnits += parseInt(r.quantity_received || 0);
+            totalProcCost += parseFloat(r.total_cost || 0);
+        });
+
+        // ==========================================
+        // 4. Branch Chart Data (للمدير بس)
+        // ==========================================
+        let branchChartLabels = [];
+        let branchChartDataArr = [];
+        let branchPerfData = [];
+        
+        if (role === 'director') {
+            const bpQuery = `
+                SELECT b.name as branch_name,
+                       COALESCE((SELECT SUM(total_amount) FROM sales WHERE branch_id = b.id AND DATE(sale_date) >= $1 AND DATE(sale_date) <= $2), 0) as revenue,
+                       COALESCE((SELECT SUM(quantity_received * unit_cost) FROM procurement WHERE branch_id = b.id AND DATE(created_at) >= $1 AND DATE(created_at) <= $2), 0) as proc_cost,
+                       COALESCE((SELECT SUM(i.quantity_available * p.cost_price) FROM inventory i JOIN products p ON i.product_id = p.id WHERE i.branch_id = b.id), 0) as inv_value,
+                       COALESCE((SELECT COUNT(*) FROM sales WHERE branch_id = b.id AND DATE(sale_date) >= $1 AND DATE(sale_date) <= $2), 0) as trans_count
+                FROM branches b WHERE b.status = 'active'
+            `;
+            const bpRes = await db.query(bpQuery, [date_from, date_to]);
+            branchPerfData = bpRes.rows;
+            
+            branchPerfData.forEach(b => {
+                branchChartLabels.push(b.branch_name);
+                branchChartDataArr.push(parseFloat(b.revenue));
+            });
+        }
+
+
+        // 🟢 تجميع البيانات وإرسالها للواجهة 🟢
+        res.render('pages/reports/index', {
+            title: 'Company Reports',
+            role: role,
+            filters: { date_from, date_to, branch_id: filterBranch || '' },
+            allBranches,
+            
+            // Sales
+            salesSummary: { totalRev, transCount, avgOrderValue, topProduct },
+            salesProducts,
+            revenueChart: { labels: revenueChartDates, data: revenueChartData },
+            
+            // Inventory
+            invSummary: { totalSkus, totalInvValue, lowStockCount, outOfStockCount },
+            inventoryData,
+            
+            // Procurement
+            procSummary: { totalProcurements: procRes.rows.length, totalProcUnits, totalProcCost },
+            procurementData: procRes.rows,
+            
+            // Cashier (فارغ حالياً لحدي ما تبرمجه أو تخليه كدا)
+            cashierData: [],
+            
+            // Branch
+            branchPerfData,
+            branchChart: { labels: branchChartLabels, data: branchChartDataArr }
+        });
+
     } catch (error) {
         console.error('Report Generation Error:', error);
         req.flash('error', 'An error occurred while generating the report');
@@ -122,7 +215,9 @@ exports.index = async (req, res) => {
     }
 };
 
-        // 2. Inventory Report Data
+// ==========================================
+// PDF Download Function
+// ==========================================
 exports.downloadPdf = async (req, res) => {
     try {
         const role = req.session.user.role;
@@ -132,7 +227,6 @@ exports.downloadPdf = async (req, res) => {
         if (!date_from) date_from = new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0];
         if (!date_to) date_to = new Date().toISOString().split('T')[0];
 
-        // Fetch Branch Performance data
         const bpQuery = `
             SELECT b.name as branch_name,
                    COALESCE((SELECT SUM(total_amount) FROM sales WHERE branch_id = b.id AND DATE(sale_date) >= $1 AND DATE(sale_date) <= $2), 0) as revenue,
@@ -155,7 +249,6 @@ exports.downloadPdf = async (req, res) => {
         doc.font('Helvetica').fontSize(10).text(`Period: ${date_from} to ${date_to}`, { align: 'center' });
         doc.moveDown(2);
 
-        // Table Header
         const colStart = [50, 150, 250, 350, 450];
         doc.font('Helvetica-Bold').fontSize(10);
         doc.text('Branch', colStart[0], doc.y, { continued: false });
@@ -168,7 +261,6 @@ exports.downloadPdf = async (req, res) => {
         doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
         doc.moveDown(0.5);
 
-        // Table Rows
         doc.font('Helvetica');
         let totalRev = 0, totalProc = 0, totalInv = 0, totalTrans = 0;
         
@@ -204,4 +296,3 @@ exports.downloadPdf = async (req, res) => {
         res.status(500).send('Error generating PDF');
     }
 };
-

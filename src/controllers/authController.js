@@ -1,17 +1,17 @@
 const db = require('../config/db');
 const bcrypt = require('bcrypt');
-const crypto = require('crypto'); // أضفنا المكتبة دي لتوليد كلمات سر عشوائية
+const crypto = require('crypto');
 const { validationResult } = require('express-validator');
 const { logAction } = require('../utils/auditLogger');
 
-exports.showLogin = (req, res) => {
+const showLogin = (req, res) => {
     if (req.session && req.session.user) {
         return res.redirect('/dashboard');
     }
     res.render('pages/auth/login');
 };
 
-exports.processLogin = async (req, res) => {
+const processLogin = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         req.flash('error', 'Username and password are required.');
@@ -35,8 +35,6 @@ exports.processLogin = async (req, res) => {
         }
 
         const user = result.rows[0];
-
-        // الحماية الصارمة: مقارنة التشفير فقط وبدون أي أبواب خلفية
         const match = await bcrypt.compare(password, user.password_hash);
 
         if (!match) {
@@ -68,20 +66,22 @@ exports.processLogin = async (req, res) => {
     }
 };
 
-exports.logout = async (req, res) => {
+const logout = async (req, res) => {
     if (req.session && req.session.user) {
-    await logAction(req.session.user.id, 'LOGOUT', 'users', req.session.user.id, { ip: req.ip }, req.ip);
+        await logAction(req.session.user.id, 'LOGOUT', 'users', req.session.user.id, { ip: req.ip }, req.ip);
     }
-    req.session.destroy(() => {
+    req.session.destroy((err) => {
+        if (err) console.error('Error destroying session:', err);
+        res.clearCookie('connect.sid'); 
         res.redirect('/login');
     });
 };
 
-exports.showForgotPassword = (req, res) => {
+const showForgotPassword = (req, res) => {
     res.render('pages/auth/forgot-password');
 };
 
-exports.processForgotPassword = async (req, res) => {
+const processForgotPassword = async (req, res) => {
     const { username } = req.body;
     if (!username) {
         req.flash('error', 'Username is required');
@@ -92,21 +92,18 @@ exports.processForgotPassword = async (req, res) => {
         const result = await db.query("SELECT id FROM users WHERE username = $1 AND status = 'active'", [username]);
         
         if (result.rows.length > 0) {
-            // توليد كلمة سر عشوائية من 8 أحرف
             const tempPassword = crypto.randomBytes(4).toString('hex');
             const newPasswordHash = await bcrypt.hash(tempPassword, 10);
             
             await db.query("UPDATE users SET password_hash = $1 WHERE username = $2", [newPasswordHash, username]);
             await logAction(result.rows[0].id, 'PASSWORD_RESET', 'users', result.rows[0].id, { trigger: 'forgot_password' }, req.ip);
             
-            // طباعة كلمة السر في التيرمنال للمدير فقط
             console.log(`\n🚨 SECURITY ALERT 🚨`);
             console.log(`Password for user '${username}' has been reset.`);
             console.log(`New Temporary Password: ${tempPassword}`);
             console.log(`Please communicate this securely to the user.\n`);
         }
         
-        // رسالة عامة للمستخدم لمنع كشف الحسابات الموجودة
         req.flash('success', 'If the username exists in our system, the administrator has been notified with the new reset instructions.');
         res.redirect('/forgot-password');
     } catch (error) {
@@ -114,4 +111,13 @@ exports.processForgotPassword = async (req, res) => {
         req.flash('error', 'An error occurred. Please try again.');
         res.redirect('/forgot-password');
     }
+};
+
+// التصدير النظيف في مكان واحد بس
+module.exports = {
+    showLogin,
+    processLogin,
+    logout,
+    showForgotPassword,
+    processForgotPassword
 };

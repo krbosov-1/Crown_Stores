@@ -1,106 +1,25 @@
 <% layout('layouts/main') -%>
-
-<!-- Add Chart.js for reports -->
-<% block('scripts', `
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        // Sales Revenue Chart
-        const salesCtx = document.getElementById('salesChart');
-        if (salesCtx) {
-            new Chart(salesCtx, {
-                type: 'line',
-                data: {
-                    labels: <%- JSON.stringify(revenueChart.labels) %>,
-                    datasets: [{
-                        label: 'Revenue (UGX)',
-                        data: <%- JSON.stringify(revenueChart.data) %>,
-                        borderColor: '#1B4FD8',
-                        backgroundColor: 'rgba(27, 79, 216, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.3,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
-                }
-            });
-        }
-        
-        // Branch Revenue Chart for Director
-        const branchCtx = document.getElementById('branchChart');
-        if (branchCtx && <%- JSON.stringify(branchChart ? branchChart.labels.length > 0 : false) %>) {
-            new Chart(branchCtx, {
-                type: 'bar',
-                data: {
-                    labels: <%- JSON.stringify(branchChart ? branchChart.labels : []) %>,
-                    datasets: [{
-                        label: 'Revenue (UGX)',
-                        data: <%- JSON.stringify(branchChart ? branchChart.data : []) %>,
-                        backgroundColor: '#1B4FD8',
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
-                }
-            });
-        }
-
-        // CSV Export utility
-        window.exportTableToCSV = function(tableId, filename) {
-            const table = document.getElementById(tableId);
-            if (!table) return;
-            
-            let csv = [];
-            const rows = table.querySelectorAll('tr');
-            
-            for (let i = 0; i < rows.length; i++) {
-                let row = [], cols = rows[i].querySelectorAll('td, th');
-                
-                for (let j = 0; j < cols.length; j++) {
-                    let data = cols[j].innerText.replace(/(\\r\\n|\\n|\\r)/gm, '').replace(/"/g, '""');
-                    row.push('"' + data + '"');
-                }
-                csv.push(row.join(','));
-            }
-
-            const csvFile = new Blob([csv.join('\\n')], {type: 'text/csv'});
-            const downloadLink = document.createElement('a');
-            downloadLink.download = filename;
-            downloadLink.href = window.URL.createObjectURL(csvFile);
-            downloadLink.style.display = 'none';
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-        }
-    });
-
-    function filterInventory() {
-        const val = document.getElementById('invStatusFilter').value.toLowerCase();
-        const rows = document.querySelectorAll('#inventoryTable tbody tr');
-        rows.forEach(r => {
-            const status = r.getAttribute('data-status').toLowerCase();
-            if (val === 'all' || status === val) {
-                r.style.display = '';
-            } else {
-                r.style.display = 'none';
-            }
-        });
-    }
-</script>
-`) %>
+<% 
+    /* 🛡️ منطقة الحماية: تجهيز متغيرات احتياطية عشان الواجهة ما تضرب لو الكنترولر ناقص 🛡️ */
+    const currentRole = locals.role || 'manager';
+    const currentFilters = locals.filters || { date_from: '', date_to: '', branch_id: '' };
+    const branches = locals.allBranches || [];
+    
+    const salesSum = locals.salesSummary || { totalRev: 0, transCount: 0, avgOrderValue: 0, topProduct: 'N/A' };
+    const sProducts = locals.salesProducts || [];
+    const revChart = locals.revenueChart || { labels: [], data: [] };
+    
+    const invSum = locals.invSummary || { totalSkus: 0, totalInvValue: 0, lowStockCount: 0, outOfStockCount: 0 };
+    const invData = locals.inventoryData || [];
+    
+    const procSum = locals.procSummary || { totalProcurements: 0, totalProcUnits: 0, totalProcCost: 0 };
+    const procData = locals.procurementData || [];
+    
+    const cashData = locals.cashierData || [];
+    
+    const branchPerf = locals.branchPerfData || [];
+    const bChart = locals.branchChart || { labels: [], data: [] };
+%>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="fw-bold mb-0">Reports & Analytics</h4>
@@ -111,19 +30,19 @@
         <form method="GET" action="/reports" class="row g-3">
             <div class="col-12 col-md-3">
                 <label class="form-label text-muted small fw-bold text-uppercase mb-1">Date From</label>
-                <input type="date" class="form-control bg-light border-0" name="date_from" value="<%= filters.date_from %>">
+                <input type="date" class="form-control bg-light border-0" name="date_from" value="<%= currentFilters.date_from %>">
             </div>
             <div class="col-12 col-md-3">
                 <label class="form-label text-muted small fw-bold text-uppercase mb-1">Date To</label>
-                <input type="date" class="form-control bg-light border-0" name="date_to" value="<%= filters.date_to %>">
+                <input type="date" class="form-control bg-light border-0" name="date_to" value="<%= currentFilters.date_to %>">
             </div>
-            <% if (role === 'director') { %>
+            <% if (currentRole === 'director') { %>
             <div class="col-12 col-md-3">
                 <label class="form-label text-muted small fw-bold text-uppercase mb-1">Branch</label>
                 <select class="form-select bg-light border-0" name="branch_id">
                     <option value="">All Branches</option>
-                    <% allBranches.forEach(b => { %>
-                        <option value="<%= b.id %>" <%= String(filters.branch_id) === String(b.id) ? 'selected' : '' %>><%= b.name %></option>
+                    <% branches.forEach(b => { %>
+                        <option value="<%= b.id %>" <%= String(currentFilters.branch_id) === String(b.id) ? 'selected' : '' %>><%= b.name %></option>
                     <% }) %>
                 </select>
             </div>
@@ -145,12 +64,12 @@
     <li class="nav-item" role="presentation">
         <button class="nav-link fw-medium text-dark" id="procurement-tab" data-bs-toggle="tab" data-bs-target="#procurement" type="button" role="tab">Procurement</button>
     </li>
-    <% if (role === 'manager') { %>
+    <% if (currentRole === 'manager' || currentRole === 'director') { %>
     <li class="nav-item" role="presentation">
         <button class="nav-link fw-medium text-dark" id="cashier-tab" data-bs-toggle="tab" data-bs-target="#cashier" type="button" role="tab">Cashier Balancing</button>
     </li>
     <% } %>
-    <% if (role === 'director') { %>
+    <% if (currentRole === 'director') { %>
     <li class="nav-item" role="presentation">
         <button class="nav-link fw-medium text-dark" id="branch-tab" data-bs-toggle="tab" data-bs-target="#branch" type="button" role="tab">Branch Performance</button>
     </li>
@@ -171,7 +90,7 @@
                 <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
                     <div class="card-body p-4 text-center">
                         <div class="text-muted small fw-bold text-uppercase mb-2">Total Revenue</div>
-                        <h4 class="fw-bold mb-0 text-primary">UGX <%= salesSummary.totalRev.toLocaleString() %></h4>
+                        <h4 class="fw-bold mb-0 text-primary">UGX <%= Number(salesSum.totalRev || 0).toLocaleString() %></h4>
                     </div>
                 </div>
             </div>
@@ -179,7 +98,7 @@
                 <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
                     <div class="card-body p-4 text-center">
                         <div class="text-muted small fw-bold text-uppercase mb-2">Total Transactions</div>
-                        <h4 class="fw-bold mb-0 text-dark"><%= salesSummary.transCount %></h4>
+                        <h4 class="fw-bold mb-0 text-dark"><%= salesSum.transCount %></h4>
                     </div>
                 </div>
             </div>
@@ -187,7 +106,7 @@
                 <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
                     <div class="card-body p-4 text-center">
                         <div class="text-muted small fw-bold text-uppercase mb-2">Avg Order Value</div>
-                        <h4 class="fw-bold mb-0 text-dark">UGX <%= salesSummary.avgOrderValue.toLocaleString(undefined, {maximumFractionDigits:0}) %></h4>
+                        <h4 class="fw-bold mb-0 text-dark">UGX <%= Number(salesSum.avgOrderValue || 0).toLocaleString(undefined, {maximumFractionDigits:0}) %></h4>
                     </div>
                 </div>
             </div>
@@ -195,7 +114,7 @@
                 <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
                     <div class="card-body p-4 text-center">
                         <div class="text-muted small fw-bold text-uppercase mb-2">Top Product</div>
-                        <h5 class="fw-bold mb-0 text-dark text-truncate" title="<%= salesSummary.topProduct %>"><%= salesSummary.topProduct %></h5>
+                        <h5 class="fw-bold mb-0 text-dark text-truncate" title="<%= salesSum.topProduct %>"><%= salesSum.topProduct %></h5>
                     </div>
                 </div>
             </div>
@@ -220,12 +139,12 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <% salesProducts.forEach(p => { %>
+                        <% sProducts.forEach(p => { %>
                             <tr>
                                 <td class="ps-4 fw-bold text-dark"><%= p.name %></td>
                                 <td class="text-muted small"><%= p.category_name || 'N/A' %></td>
                                 <td class="text-end fw-medium"><%= p.total_qty %></td>
-                                <td class="text-end fw-bold font-monospace text-dark">UGX <%= p.revenue.toLocaleString() %></td>
+                                <td class="text-end fw-bold font-monospace text-dark">UGX <%= Number(p.revenue || 0).toLocaleString() %></td>
                                 <td class="text-center">
                                     <span class="badge bg-light border text-dark"><%= p.percentage %>%</span>
                                 </td>
@@ -257,7 +176,7 @@
                 <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
                     <div class="card-body p-4 text-center">
                         <div class="text-muted small fw-bold text-uppercase mb-2">Total SKUs</div>
-                        <h4 class="fw-bold mb-0 text-dark"><%= invSummary.totalSkus %></h4>
+                        <h4 class="fw-bold mb-0 text-dark"><%= invSum.totalSkus %></h4>
                     </div>
                 </div>
             </div>
@@ -265,7 +184,7 @@
                 <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
                     <div class="card-body p-4 text-center">
                         <div class="text-muted small fw-bold text-uppercase mb-2">Total Value</div>
-                        <h4 class="fw-bold mb-0 text-dark">UGX <%= invSummary.totalInvValue.toLocaleString() %></h4>
+                        <h4 class="fw-bold mb-0 text-dark">UGX <%= Number(invSum.totalInvValue || 0).toLocaleString() %></h4>
                     </div>
                 </div>
             </div>
@@ -273,7 +192,7 @@
                 <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
                     <div class="card-body p-4 text-center">
                         <div class="text-muted small fw-bold text-uppercase mb-2">Low Stock</div>
-                        <h4 class="fw-bold mb-0 text-warning"><%= invSummary.lowStockCount %></h4>
+                        <h4 class="fw-bold mb-0 text-warning"><%= invSum.lowStockCount %></h4>
                     </div>
                 </div>
             </div>
@@ -281,7 +200,7 @@
                 <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
                     <div class="card-body p-4 text-center">
                         <div class="text-muted small fw-bold text-uppercase mb-2">Out of Stock</div>
-                        <h4 class="fw-bold mb-0 text-danger"><%= invSummary.outOfStockCount %></h4>
+                        <h4 class="fw-bold mb-0 text-danger"><%= invSum.outOfStockCount %></h4>
                     </div>
                 </div>
             </div>
@@ -301,13 +220,13 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <% inventoryData.forEach(p => { %>
+                        <% invData.forEach(p => { %>
                             <tr data-status="<%= p.status %>">
                                 <td class="ps-4 fw-bold text-dark"><%= p.product_name %></td>
                                 <td class="text-muted small"><%= p.category_name || 'N/A' %></td>
                                 <td class="text-end fw-medium"><%= p.quantity_available %></td>
                                 <td class="text-end text-muted small"><%= p.reorder_level %></td>
-                                <td class="text-end fw-bold font-monospace text-dark">UGX <%= parseFloat(p.stock_value || 0).toLocaleString() %></td>
+                                <td class="text-end fw-bold font-monospace text-dark">UGX <%= Number(p.stock_value || 0).toLocaleString() %></td>
                                 <td class="text-center pe-4">
                                     <% if(p.status === 'In Stock') { %>
                                         <span class="badge bg-success-light text-success border border-success border-opacity-25 py-1 px-2">In Stock</span>
@@ -337,7 +256,7 @@
                 <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
                     <div class="card-body p-4 text-center">
                         <div class="text-muted small fw-bold text-uppercase mb-2">Total Procurements</div>
-                        <h4 class="fw-bold mb-0 text-dark"><%= procSummary.totalProcurements %></h4>
+                        <h4 class="fw-bold mb-0 text-dark"><%= procSum.totalProcurements %></h4>
                     </div>
                 </div>
             </div>
@@ -345,7 +264,7 @@
                 <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
                     <div class="card-body p-4 text-center">
                         <div class="text-muted small fw-bold text-uppercase mb-2">Total Units Received</div>
-                        <h4 class="fw-bold mb-0 text-dark"><%= procSummary.totalProcUnits.toLocaleString() %></h4>
+                        <h4 class="fw-bold mb-0 text-dark"><%= Number(procSum.totalProcUnits || 0).toLocaleString() %></h4>
                     </div>
                 </div>
             </div>
@@ -353,7 +272,7 @@
                 <div class="card border-0 shadow-sm bg-white h-100 rounded-3">
                     <div class="card-body p-4 text-center">
                         <div class="text-muted small fw-bold text-uppercase mb-2">Total Cost</div>
-                        <h4 class="fw-bold mb-0 text-dark">UGX <%= procSummary.totalProcCost.toLocaleString() %></h4>
+                        <h4 class="fw-bold mb-0 text-dark">UGX <%= Number(procSum.totalProcCost || 0).toLocaleString() %></h4>
                     </div>
                 </div>
             </div>
@@ -374,14 +293,14 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <% procurementData.forEach(p => { %>
+                        <% procData.forEach(p => { %>
                             <tr>
-                                <td class="ps-4 text-muted small"><%= new Date(p.pr_date).toLocaleDateString() %></td>
+                                <td class="ps-4 text-muted small"><%= p.pr_date ? new Date(p.pr_date).toLocaleDateString() : 'N/A' %></td>
                                 <td class="fw-bold text-dark"><%= p.product_name %></td>
                                 <td class="text-muted small"><%= p.supplier_name || 'N/A' %></td>
                                 <td class="text-end fw-medium"><%= p.quantity_received %></td>
-                                <td class="text-end text-muted small font-monospace">UGX <%= parseFloat(p.unit_cost).toLocaleString() %></td>
-                                <td class="text-end fw-bold font-monospace text-dark">UGX <%= parseFloat(p.total_cost).toLocaleString() %></td>
+                                <td class="text-end text-muted small font-monospace">UGX <%= Number(p.unit_cost || 0).toLocaleString() %></td>
+                                <td class="text-end fw-bold font-monospace text-dark">UGX <%= Number(p.total_cost || 0).toLocaleString() %></td>
                                 <td class="text-muted small"><%= p.full_name %></td>
                             </tr>
                         <% }) %>
@@ -392,7 +311,7 @@
     </div>
 
     <!-- Tab 4: Cashier Balancing -->
-    <% if (role === 'manager') { %>
+    <% if (currentRole === 'manager' || currentRole === 'director') { %>
     <div class="tab-pane fade" id="cashier" role="tabpanel">
         <div class="d-flex justify-content-end mb-3">
             <button class="btn btn-outline-dark btn-sm fw-medium shadow-sm" onclick="exportTableToCSV('cashierTable', 'cashier_balancing_report.csv')">
@@ -413,16 +332,15 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <% cashierData.forEach(cb => { 
-                            const variance = parseFloat(cb.variance_amount);
+                        <% cashData.forEach(cb => { 
+                            const variance = parseFloat(cb.variance_amount || 0);
                         %>
                             <tr>
-                                <td class="ps-4 text-muted small"><%= new Date(cb.balance_date).toLocaleDateString() %></td>
+                                <td class="ps-4 text-muted small"><%= cb.balance_date ? new Date(cb.balance_date).toLocaleDateString() : 'N/A' %></td>
                                 <td class="fw-bold text-dark"><%= cb.cashier_name %></td>
-                                <td class="text-end text-muted font-monospace"><%= parseFloat(cb.expected_amount).toLocaleString() %></td>
-                                <td class="text-end fw-medium font-monospace"><%= parseFloat(cb.actual_amount).toLocaleString() %></td>
-                                <td class="text-end fw-bold font-monospace 
-                                    <%= variance === 0 ? 'text-success' : (variance > 0 ? 'text-primary' : 'text-danger') %>">
+                                <td class="text-end text-muted font-monospace"><%= Number(cb.expected_amount || 0).toLocaleString() %></td>
+                                <td class="text-end fw-medium font-monospace"><%= Number(cb.actual_amount || 0).toLocaleString() %></td>
+                                <td class="text-end fw-bold font-monospace <%= variance === 0 ? 'text-success' : (variance > 0 ? 'text-primary' : 'text-danger') %>">
                                     <%= variance.toLocaleString() %>
                                 </td>
                                 <td class="text-center pe-4">
@@ -444,10 +362,10 @@
     <% } %>
 
     <!-- Tab 5: Branch Performance -->
-    <% if (role === 'director') { %>
+    <% if (currentRole === 'director') { %>
     <div class="tab-pane fade" id="branch" role="tabpanel">
         <div class="d-flex justify-content-end mb-3">
-            <a href="/reports/pdf?date_from=<%= filters.date_from %>&date_to=<%= filters.date_to %>" target="_blank" class="btn btn-outline-dark btn-sm fw-medium shadow-sm">
+            <a href="/reports/pdf?date_from=<%= currentFilters.date_from %>&date_to=<%= currentFilters.date_to %>" target="_blank" class="btn btn-outline-dark btn-sm fw-medium shadow-sm">
                 <i class="bi bi-file-earmark-pdf me-1"></i> Download PDF Report
             </a>
         </div>
@@ -471,12 +389,12 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <% branchPerfData.forEach(b => { %>
+                        <% branchPerf.forEach(b => { %>
                             <tr>
                                 <td class="ps-4 fw-bold text-dark"><%= b.branch_name %></td>
-                                <td class="text-end fw-bold font-monospace text-primary">UGX <%= parseFloat(b.revenue).toLocaleString() %></td>
-                                <td class="text-end font-monospace text-muted">UGX <%= parseFloat(b.proc_cost).toLocaleString() %></td>
-                                <td class="text-end font-monospace text-muted">UGX <%= parseFloat(b.inv_value).toLocaleString() %></td>
+                                <td class="text-end fw-bold font-monospace text-primary">UGX <%= Number(b.revenue || 0).toLocaleString() %></td>
+                                <td class="text-end font-monospace text-muted">UGX <%= Number(b.proc_cost || 0).toLocaleString() %></td>
+                                <td class="text-end font-monospace text-muted">UGX <%= Number(b.inv_value || 0).toLocaleString() %></td>
                                 <td class="text-center pe-4"><span class="badge bg-light text-dark border px-2 py-1"><%= b.trans_count %></span></td>
                             </tr>
                         <% }) %>
@@ -488,3 +406,94 @@
     <% } %>
 
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const salesCtx = document.getElementById('salesChart');
+        if (salesCtx) {
+            new Chart(salesCtx, {
+                type: 'line',
+                data: {
+                    labels: <%- JSON.stringify(revChart.labels || []) %>,
+                    datasets: [{
+                        label: 'Revenue (UGX)',
+                        data: <%- JSON.stringify(revChart.data || []) %>,
+                        borderColor: '#1B4FD8',
+                        backgroundColor: 'rgba(27, 79, 216, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+        
+        const branchCtx = document.getElementById('branchChart');
+        if (branchCtx && <%- JSON.stringify(bChart.labels && bChart.labels.length > 0 ? true : false) %>) {
+            new Chart(branchCtx, {
+                type: 'bar',
+                data: {
+                    labels: <%- JSON.stringify(bChart.labels || []) %>,
+                    datasets: [{
+                        label: 'Revenue (UGX)',
+                        data: <%- JSON.stringify(bChart.data || []) %>,
+                        backgroundColor: '#1B4FD8',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        window.exportTableToCSV = function(tableId, filename) {
+            const table = document.getElementById(tableId);
+            if (!table) return;
+            
+            let csv = [];
+            const rows = table.querySelectorAll('tr');
+            
+            for (let i = 0; i < rows.length; i++) {
+                let row = [], cols = rows[i].querySelectorAll('td, th');
+                for (let j = 0; j < cols.length; j++) {
+                    let data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, '').replace(/"/g, '""');
+                    row.push('"' + data + '"');
+                }
+                csv.push(row.join(','));
+            }
+
+            const csvFile = new Blob([csv.join('\n')], {type: 'text/csv'});
+            const downloadLink = document.createElement('a');
+            downloadLink.download = filename;
+            downloadLink.href = window.URL.createObjectURL(csvFile);
+            downloadLink.style.display = 'none';
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+    });
+
+    function filterInventory() {
+        const val = document.getElementById('invStatusFilter').value.toLowerCase();
+        const rows = document.querySelectorAll('#inventoryTable tbody tr');
+        rows.forEach(r => {
+            const status = r.getAttribute('data-status').toLowerCase();
+            if (val === 'all' || status === val) {
+                r.style.display = '';
+            } else {
+                r.style.display = 'none';
+            }
+        });
+    }
+</script>

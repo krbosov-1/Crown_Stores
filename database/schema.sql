@@ -120,7 +120,7 @@ CREATE TABLE audit_logs (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     action VARCHAR(100) NOT NULL,
-    table_name VARCHAR(50),
+    table_name VARCHAR(100),
     record_id INTEGER,
     details JSONB,
     ip_address INET,

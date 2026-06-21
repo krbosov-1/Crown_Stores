@@ -1,4 +1,4 @@
-require('dotenv').config(); // تم تصليح حرف R
+require('dotenv').config(); 
 
 const express = require('express');
 const path = require('path');
@@ -7,7 +7,8 @@ const flash = require('connect-flash');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const engine = require('ejs-mate');
-const compression = require('compression'); // إضافة الضغط لتسريع النظام
+const compression = require('compression'); // إضافة ال
+// ضغط لتسريع النظام
 
 const app = express();
 
@@ -129,7 +130,10 @@ app.use((err, req, res, next) => {
 });
 
 // 13. app.listen() ديناميكي
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
-});
+module.exports = app;
+if (require.main === module) {
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+}
