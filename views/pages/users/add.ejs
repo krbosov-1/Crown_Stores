@@ -1,0 +1,77 @@
+<% layout('layouts/main') -%>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Add New Staff</h4>
+        <p class="text-muted small mb-0">Register a new employee to the system</p>
+    </div>
+    <a href="/users" class="btn btn-outline-secondary shadow-sm rounded-3">
+        <i class="bi bi-arrow-left me-2"></i> Back to Staff List
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-12 col-lg-8">
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4">
+                
+                <% if (typeof error !== 'undefined' && error) { %>
+                    <div class="alert alert-danger shadow-sm rounded-3">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> <%= error %>
+                    </div>
+                <% } %>
+
+                <form action="/users/add" method="POST">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold text-uppercase">Full Name</label>
+                            <input type="text" class="form-control bg-light border-0 p-2" name="full_name" required placeholder="e.g. Awab Abdelhafiez">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold text-uppercase">Email Address</label>
+                            <input type="email" class="form-control bg-light border-0 p-2" name="email" required placeholder="name@company.com">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold text-uppercase mt-2">Username</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-0 text-muted">@</span>
+                                <input type="text" class="form-control bg-light border-0 p-2" name="username" required placeholder="username">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold text-uppercase mt-2">Temporary Password</label>
+                            <input type="password" class="form-control bg-light border-0 p-2" name="password" required placeholder="Enter temporary password">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold text-uppercase mt-2">System Role</label>
+                            <select class="form-select bg-light border-0 p-2" name="role" required>
+                                <option value="" disabled selected>Select Role...</option>
+                                <option value="director">Director (Full Access)</option>
+                                <option value="manager">Manager (Branch Admin)</option>
+                                <option value="sales_agent">Sales Agent (POS Only)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold text-uppercase mt-2">Assigned Branch</label>
+                            <select class="form-select bg-light border-0 p-2" name="branch_id" required>
+                                <option value="all">All Branches (HQ)</option>
+                                <% branches.forEach(branch => { %>
+                                    <option value="<%= branch.id %>"><%= branch.name %></option>
+                                <% }) %>
+                            </select>
+                        </div>
+
+                        <div class="col-12 mt-4 pt-2">
+                            <button type="submit" class="btn btn-primary px-4 py-2 fw-medium shadow-sm rounded-3">
+                                <i class="bi bi-person-plus-fill me-2"></i> Create Employee Account
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>

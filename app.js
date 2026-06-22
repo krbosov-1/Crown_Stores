@@ -99,6 +99,7 @@ const cashierRouter = require('./src/routes/cashier');
 const reportsRouter = require('./src/routes/reports');
 const notificationsRouter = require('./src/routes/notifications');
 const profileRouter = require('./src/routes/profile');
+const usersRouter = require('./src/routes/users'); 
 
 app.use('/', authRouter);
 app.use('/dashboard', dashboardRouter);
@@ -112,6 +113,7 @@ app.use('/cashier-balancing', cashierRouter);
 app.use('/reports', reportsRouter);
 app.use('/notifications', notificationsRouter);
 app.use('/profile', profileRouter);
+app.use('/users', usersRouter); 
 
 app.get('/', (req, res) => {
     if (req.session.user) {
