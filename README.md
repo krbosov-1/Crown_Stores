@@ -1,74 +1,34 @@
 # Crown Stores Retail Management System (CSRMS)
 
 ## Overview
-
 The Crown Stores Retail Management System (CSRMS) is a robust, custom-built, full-stack application serving multi-branch supermarket operations. Designed to replace disconnected legacy systems, CSRMS unifies inventory handling, procurement, point-of-sale transactions, and branch performance analytics into a single authoritative source of truth.
 
 It uses a structured Role-Based Access Control (RBAC) architecture separating logic per region, guaranteeing that Directors perceive global oversight while Managers operate within isolated local environments. It strictly employs an un-opinionated database-first approach utilizing vanilla PostgreSQL parameterization, thereby stripping opaque ORM latency and guaranteeing full transaction integrity.
 
 ## Tech Stack
-
 | Component         | Technology                      |
 |-------------------|---------------------------------|
 | **Backend**       | Node.js (v20+), Express.js      |
 | **Database**      | PostgreSQL (v15+), pg client    |
 | **View Engine**   | EJS with ejs-mate               |
-| **Frontend**      | Vanilla JS, Bootstrap 5.3 CDN   |
+| **Frontend**      | Vanilla JS, Bootstrap           |
 | **Charts/Visuals**| Chart.js                        |
 | **PDF Generation**| PDFKit                          |
 
 ## Prerequisites
 - Node.js v20+
-- PostgreSQL v15+
-
-## Installation
-
-1. Clone the repository:
-   ```bash
-   git clone <repository_url>
-   cd csrms
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Setup Environment Variables:
-   ```bash
-   cp .env.example .env
-   ```
-4. Create the PostgreSQL database:
-   ```bash
-   createdb csrms_db
-   ```
-5. Initialize the database schema and triggers:
-   ```bash
-   psql -d csrms_db -f database/schema.sql
-   ```
-6. Seed the database with initial branches, users, categories, products, and sales:
-   ```bash
-   psql -d csrms_db -f database/seed.sql
-   ```
-7. Start the development server:
-   ```bash
-   npm run dev
-   ```
-8. Open your browser and navigate to:
-   ```
-   http://localhost:3000
-   ```
+- PostgreSQL v18
 
 ## Default Login Credentials
-
 | Role            | Username   | Password    |
 |-----------------|------------|-------------|
-| Director        | director   | Crown@1234  |
-| Manager (Main)  | manager1   | Crown@1234  |
-| Manager (North) | manager2   | Crown@1234  |
-| Agent (Main)    | agent1     | Crown@1234  |
-| Agent (North)   | agent2     | Crown@1234  |
+| Director        | director   |    crown    |
+| Manager (Main)  | manager1   |    crown    |
+| Manager (North) | manager2   |    crown    |
+| Agent (Main)    | agent1     |    crown    |
+| Agent (North)   | agent2     |    crown    |
 
 ## Complete Route Reference
-
 | Method | Path                           | Role                  | Description                           |
 |--------|--------------------------------|-----------------------|---------------------------------------|
 | GET    | `/login`                       | Public                | Show login page                       |
@@ -103,38 +63,3 @@ It uses a structured Role-Based Access Control (RBAC) architecture separating lo
 - **Auditing**: Tamper-evident ledger logging for balance approvals and critical status patches
 - **Reporting Generator**: Granular time-based exports across transactions and performance KPIs
 - **Notifications Engine**: Proactive alert loops monitoring low inventory metrics natively
-
-## Project Structure
-```
-csrms/
-├── src/
-│   ├── config/          # Central database pooling and setup
-│   ├── controllers/     # Handlers for system routes per vertical
-│   ├── middleware/      # Authentication, role access, globals
-│   ├── routes/          # Express route structures and controllers
-│   └── utils/           # Time, string, and number formatting
-├── views/
-│   ├── layouts/         # Base EJS global template structure
-│   ├── pages/           # Dedicated route rendering components
-│   └── partials/        # Injected nav bars, sidebars, alerts
-├── public/
-│   ├── css/             # Stylesheets (custom extensions over Bootstrap)
-│   └── js/              # Client-side scripts like POS and charts
-├── database/            # Essential raw SQL schemas and seeded tests
-├── app.js               # Primary Node instantiation and pipeline config
-├── .env.example         # Template for environment security properties
-└── package.json         # Node infrastructure packaging definitions
-```
-
-## Environment Variables
-
-| Variable       | Description                                  | Example                             |
-|----------------|----------------------------------------------|-------------------------------------|
-| `PORT`         | Port number for the application              | `3000`                              |
-| `DB_NAME`      | Target PostgreSQL database name              | `csrms_db`                          |
-| `DB_USER`      | Target PostgreSQL database user              | `postgres`                          |
-| `DB_PASSWORD`  | Default target password for credentials      | `mysecret`                          |
-| `DB_HOST`      | URL mapping of the target PostgreSQL instance| `127.0.0.1`                         |
-| `DB_PORT`      | Configured port routing for postgres         | `5433`                              |
-| `SESSION_SECRET`| Cryptographic encryption key for user sessions| `complex_production_grade_token`    |
-| `NODE_ENV`     | Switch logic routing between prod and dev    | `development`                       |

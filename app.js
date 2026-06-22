@@ -98,6 +98,7 @@ const receiptsRouter = require('./src/routes/receipts');
 const cashierRouter = require('./src/routes/cashier');
 const reportsRouter = require('./src/routes/reports');
 const notificationsRouter = require('./src/routes/notifications');
+const profileRouter = require('./src/routes/profile');
 
 app.use('/', authRouter);
 app.use('/dashboard', dashboardRouter);
@@ -110,6 +111,7 @@ app.use('/receipts', receiptsRouter);
 app.use('/cashier-balancing', cashierRouter);
 app.use('/reports', reportsRouter);
 app.use('/notifications', notificationsRouter);
+app.use('/profile', profileRouter);
 
 app.get('/', (req, res) => {
     if (req.session.user) {
