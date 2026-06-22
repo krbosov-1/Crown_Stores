@@ -23,6 +23,7 @@ It uses a structured Role-Based Access Control (RBAC) architecture separating lo
 | Role            | Username   | Password    |
 |-----------------|------------|-------------|
 | Director        | director   |    crown    |
+| Manager (Main)  | cole       |    crown    |
 | Manager (Main)  | manager1   |    crown    |
 | Manager (North) | manager2   |    crown    |
 | Agent (Main)    | agent1     |    crown    |
