@@ -1,0 +1,66 @@
+<% layout('layouts/main') -%>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Edit Staff Member</h4>
+        <p class="text-muted small mb-0">Update employee information and access levels</p>
+    </div>
+    <a href="/users" class="btn btn-outline-secondary shadow-sm rounded-3">
+        <i class="bi bi-arrow-left me-2"></i> Back to Staff List
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-12 col-lg-8">
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4">
+                
+                <form action="/users/edit/<%= targetUser.id %>" method="POST">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold text-uppercase">Full Name</label>
+                            <input type="text" class="form-control bg-light border-0 p-2" name="full_name" value="<%= targetUser.full_name %>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold text-uppercase">Email Address</label>
+                            <input type="email" class="form-control bg-light border-0 p-2" name="email" value="<%= targetUser.email %>" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold text-uppercase mt-2">Username</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-0 text-muted">@</span>
+                                <input type="text" class="form-control bg-light border-0 p-2" name="username" value="<%= targetUser.username %>" required>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold text-uppercase mt-2">System Role</label>
+                            <select class="form-select bg-light border-0 p-2" name="role" required>
+                                <option value="director" <%= targetUser.role === 'director' ? 'selected' : '' %>>Director (Full Access)</option>
+                                <option value="manager" <%= targetUser.role === 'manager' ? 'selected' : '' %>>Manager (Branch Admin)</option>
+                                <option value="sales_agent" <%= targetUser.role === 'sales_agent' ? 'selected' : '' %>>Sales Agent (POS Only)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold text-uppercase mt-2">Assigned Branch</label>
+                            <select class="form-select bg-light border-0 p-2" name="branch_id" required>
+                                <option value="all" <%= targetUser.branch_id === null ? 'selected' : '' %>>All Branches (HQ)</option>
+                                <% branches.forEach(branch => { %>
+                                    <option value="<%= branch.id %>" <%= targetUser.branch_id === branch.id ? 'selected' : '' %>><%= branch.name %></option>
+                                <% }) %>
+                            </select>
+                        </div>
+
+                        <div class="col-12 mt-4 pt-2">
+                            <button type="submit" class="btn btn-primary px-4 py-2 fw-medium shadow-sm rounded-3">
+                                <i class="bi bi-save-fill me-2"></i> Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
