@@ -1,3 +1,4 @@
+//productController.js
 const db = require('../config/db');
 
 exports.index = async (req, res) => {
@@ -81,7 +82,7 @@ exports.index = async (req, res) => {
 exports.showCreate = async (req, res) => {
     try {
         const branchId = req.session.user.branch_id || req.session.user.branchId;
-        const categoriesRes = await db.query('SELECT id, name FROM categories WHERE branch_id = $1 AND status = $2 ORDER BY name', [branchId, 'active']);
+        const categoriesRes = await db.query('SELECT id, name FROM categories ORDER BY name');
         
         res.render('pages/products/form', {
             title: 'Add Product',

@@ -262,3 +262,45 @@ exports.showHistory = async (req, res) => {
         res.redirect('/inventory');
     }
 };
+
+exports.getAdjustPage = async (req, res) => {
+    const productId = req.params.id;
+    try {
+        const result = await db.query('SELECT * FROM products WHERE id = $1', [productId]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).send('product not found.');
+        }
+
+        res.render('pages/inventory/adjust', {
+            title: 'Adjust Stock',
+            product: result.rows[0],
+            user: req.session.user || req.user
+        });
+    } catch (error) {
+        console.error('Error loading adjust page:', error);
+        res.status(500).send('Error loading adjust page.');
+    }
+};
+
+// دالة حفظ التعديلات في الداتا بيس
+exports.postAdjustStock = async (req, res) => {
+    const recordId = req.params.id; // ممكن يكون id بتاع الـ inventory أو product_id حسب رابطك
+    const { new_stock } = req.body;
+
+    try {
+        // حنحدث جدول inventory، ونعدل الكمية، ونحدث وقت التعديل لليوم
+        const updateQuery = `
+            UPDATE inventory 
+            SET quantity_available = $1, last_updated = CURRENT_TIMESTAMP 
+            WHERE id = $2 OR product_id = $2
+        `;
+        
+        await db.query(updateQuery, [new_stock, recordId]);
+        res.redirect('/inventory');
+    } catch (error) {
+        console.error('Error updating stock:', error);
+        res.status(500).send('حصل خطأ أثناء تحديث المخزون.');
+    }
+};
+

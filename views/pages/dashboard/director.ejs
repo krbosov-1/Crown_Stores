@@ -1,6 +1,5 @@
 <% layout('layouts/main') -%>
 
-<!-- Row 1: KPI Cards -->
 <div class="row g-4 mb-4">
     <div class="col-12 col-sm-6 col-xl-3">
         <div class="card h-100 p-4 d-flex flex-row align-items-center gap-3">
@@ -9,7 +8,7 @@
             </div>
             <div>
                 <p class="text-muted mb-1 small fw-medium">Total Today Sales</p>
-                <h4 class="mb-0 fw-bold">$<%= stats.todaySales.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></h4>
+                <h4 class="mb-0 fw-bold"><%= typeof formatMoney === 'function' ? formatMoney(stats.todaySales) : stats.todaySales %></h4>
             </div>
         </div>
     </div>
@@ -21,7 +20,7 @@
             </div>
             <div>
                 <p class="text-muted mb-1 small fw-medium">Inventory Value</p>
-                <h4 class="mb-0 fw-bold">$<%= stats.inventoryValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></h4>
+                <h4 class="mb-0 fw-bold"><%= typeof formatMoney === 'function' ? formatMoney(stats.inventoryValue) : stats.inventoryValue %></h4>
             </div>
         </div>
     </div>
@@ -51,7 +50,6 @@
     </div>
 </div>
 
-<!-- Row 2: Charts (Line & Doughnut) -->
 <div class="row g-4 mb-4">
     <div class="col-12 col-lg-8">
         <div class="card h-100">
@@ -82,7 +80,6 @@
     </div>
 </div>
 
-<!-- Row 3: Bar Chart -->
 <div class="row mb-4">
     <div class="col-12">
         <div class="card">
@@ -96,7 +93,6 @@
     </div>
 </div>
 
-<!-- Row 4: Data Table -->
 <div class="row">
     <div class="col-12">
         <div class="card">
@@ -120,8 +116,8 @@
                                 <% branchTable.forEach(b => { %>
                                 <tr>
                                     <td class="fw-medium"><%= b.branch %></td>
-                                    <td>$<%= b.today_sales.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
-                                    <td>$<%= b.inventory_value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
+                                    <td><%= typeof formatMoney === 'function' ? formatMoney(b.today_sales) : b.today_sales %></td>
+                                    <td><%= typeof formatMoney === 'function' ? formatMoney(b.inventory_value) : b.inventory_value %></td>
                                     <td>
                                         <% if(b.low_stock_count > 0) { %>
                                             <span class="badge bg-warning text-dark"><%= b.low_stock_count %> items</span>
@@ -160,6 +156,9 @@
     const chartBranchSales = ${JSON.stringify(chartBranchSales)};
     const chartCategories = ${JSON.stringify(chartCategories)};
     
+    // سحب العملة بطريقة آمنة لا تتعارض مع محرك EJS
+    const currSymbol = '${typeof currencySymbol !== 'undefined' ? currencySymbol : 'UGX'}';
+    
     // Theme Colors
     const primaryColor = '#1B4FD8';
     const primaryLight = '#EEF2FF';
@@ -180,7 +179,7 @@
             data: {
                 labels: chartSales7Days.map(d => d.date),
                 datasets: [{
-                    label: 'Sales ($)',
+                    label: 'Sales (' + currSymbol + ')',
                     data: chartSales7Days.map(d => d.total),
                     borderColor: primaryColor,
                     backgroundColor: primaryLight,
@@ -233,7 +232,7 @@
             data: {
                 labels: chartBranchSales.map(b => b.branch_name),
                 datasets: [{
-                    label: 'Sales ($)',
+                    label: 'Sales (' + currSymbol + ')',
                     data: chartBranchSales.map(b => b.total),
                     backgroundColor: primaryColor,
                     borderRadius: 4

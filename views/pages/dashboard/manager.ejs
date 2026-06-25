@@ -1,6 +1,5 @@
 <% layout('layouts/main') -%>
 
-<!-- Row 1: KPI Cards -->
 <div class="row g-4 mb-4">
     <div class="col-12 col-sm-6 col-xl-3">
         <div class="card h-100 p-4 d-flex flex-row align-items-center gap-3">
@@ -9,7 +8,7 @@
             </div>
             <div>
                 <p class="text-muted mb-1 small fw-medium">Today's Sales</p>
-                <h4 class="mb-0 fw-bold">$<%= stats.todaySales.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></h4>
+                <h4 class="mb-0 fw-bold"><%= typeof formatMoney === 'function' ? formatMoney(stats.todaySales) : stats.todaySales %></h4>
             </div>
         </div>
     </div>
@@ -51,7 +50,6 @@
     </div>
 </div>
 
-<!-- Row 2: Low Stock and Out of Stock -->
 <div class="row g-4 mb-4">
     <div class="col-12 col-lg-7">
         <div class="card h-100">
@@ -122,7 +120,6 @@
     </div>
 </div>
 
-<!-- Row 3: Procurements and Sales -->
 <div class="row g-4 mb-4">
     <div class="col-12 col-lg-6">
         <div class="card h-100">
@@ -181,7 +178,7 @@
                                 <% recentSales.forEach(sale => { %>
                                 <tr>
                                     <td class="text-muted small"><%= new Date(sale.sale_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %></td>
-                                    <td class="fw-bold text-success">$<%= sale.total_amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
+                                    <td class="fw-bold text-success"><%= typeof formatMoney === 'function' ? formatMoney(sale.total_amount) : sale.total_amount %></td>
                                     <td><%= sale.items_count %> item(s)</td>
                                 </tr>
                                 <% }) %>
@@ -199,7 +196,6 @@
     </div>
 </div>
 
-<!-- Row 4: Quick Actions -->
 <div class="row g-3">
     <div class="col-12 col-sm-6 col-lg-3">
         <a href="/sales/new" class="btn btn-primary w-100 py-3 fw-bold d-flex flex-column align-items-center gap-2">

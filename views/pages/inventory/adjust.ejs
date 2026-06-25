@@ -1,0 +1,40 @@
+<% layout('layouts/main') -%>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Adjust Stock</h4>
+        <p class="text-muted small mb-0">Update inventory levels for <%= product.name %></p>
+    </div>
+    <a href="/inventory" class="btn btn-outline-secondary shadow-sm rounded-3">
+        <i class="bi bi-arrow-left me-2"></i> Back to Inventory
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-12 col-md-6 col-lg-5">
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4">
+                
+                <div class="mb-4">
+                    <h5 class="fw-bold text-primary"><%= product.name %></h5>
+                    <span class="badge bg-light text-dark border"><%= product.category %></span>
+                </div>
+
+                <form action="/inventory/adjust/<%= product.id %>" method="POST">
+                    
+                    <div class="mb-4">
+                        <label class="form-label text-muted small fw-bold text-uppercase mb-1">Current Stock Level</label>
+                        <input type="number" class="form-control bg-light border-0 p-3 fs-5 fw-bold" name="new_stock" value="<%= product.in_stock %>" required min="0">
+                        <div class="form-text mt-2">Enter the new absolute quantity available in the store.</div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-medium shadow-sm rounded-3">
+                        <i class="bi bi-check2-circle me-2"></i> Update Stock
+                    </button>
+                    
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>

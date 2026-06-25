@@ -4,23 +4,29 @@
     <div class="card-header bg-transparent border-0 pt-4 pb-2 px-4">
         <h5 class="fw-bold mb-0 text-dark">
             <i class="bi bi-box-seam text-primary me-2"></i> 
-            <%= product ? 'Edit ProductDetails' : 'Add New Product' %>
+            <%= product ? 'Edit Product Details' : 'Add New Product' %>
         </h5>
     </div>
     <div class="card-body p-4">
         <form action="<%= product ? `/products/${product.id}/update` : '/products' %>" method="POST">
             
             <div class="row g-5">
-                <!-- Left Column -->
                 <div class="col-12 col-lg-6 border-end border-light pe-lg-5">
                     <h6 class="fw-bold mb-4 text-muted small text-uppercase">Basic Information</h6>
                     
                     <div class="form-floating mb-4 shadow-sm rounded">
                         <select class="form-select bg-light border-0 fw-medium" id="category_id" name="category_id" required>
-                            <option value="" class="text-muted">Select Category</option>
-                            <% categories.forEach(cat => { %>
-                                <option value="<%= cat.id %>" <%= product && product.category_id == cat.id ? 'selected' : '' %>><%= cat.name %></option>
-                            <% }) %>
+                            <option value="" disabled <%= !product ? 'selected' : '' %>>Select Category...</option>
+                            
+                            <% if (typeof categories !== 'undefined' && categories.length > 0) { %>
+                                <% categories.forEach(cat => { %>
+                                    <option value="<%= cat.id %>" <%= (product && product.category_id == cat.id) ? 'selected' : '' %>>
+                                        <%= cat.name %>
+                                    </option>
+                                <% }) %>
+                            <% } else { %>
+                                <option value="" disabled>No categories available. Add categories first!</option>
+                            <% } %>
                         </select>
                         <label for="category_id" class="text-muted">Category <span class="text-danger">*</span></label>
                     </div>
@@ -36,7 +42,6 @@
                     </div>
                 </div>
 
-                <!-- Right Column -->
                 <div class="col-12 col-lg-6 ps-lg-4">
                     <h6 class="fw-bold mb-4 text-muted small text-uppercase">Pricing & Inventory</h6>
                     
@@ -44,13 +49,13 @@
                         <div class="col-sm-6">
                             <div class="form-floating shadow-sm rounded">
                                 <input type="number" step="0.01" class="form-control bg-light border-0 font-monospace text-muted" id="cost_price" name="cost_price" placeholder="Cost Price" value="<%= product ? product.cost_price : '' %>" required min="0">
-                                <label for="cost_price" class="text-muted">Cost Price ($) <span class="text-danger">*</span></label>
+                                <label for="cost_price" class="text-muted">Cost Price (<%= currencySymbol %>) <span class="text-danger">*</span></label>
                             </div>
                         </div>
                         <div class="col-sm-6">
                             <div class="form-floating shadow-sm rounded">
                                 <input type="number" step="0.01" class="form-control bg-light border-0 font-monospace fw-bold text-dark" id="selling_price" name="selling_price" placeholder="Selling Price" value="<%= product ? product.selling_price : '' %>" required min="0">
-                                <label for="selling_price" class="text-muted">Selling Price ($) <span class="text-danger">*</span></label>
+                                <label for="selling_price" class="text-muted">Selling Price (<%= currencySymbol %>) <span class="text-danger">*</span></label>
                             </div>
                         </div>
                     </div>
@@ -107,7 +112,8 @@
                  return;
             }
 
-            profitDisplay.innerHTML = \`<i class="bi \${profit >= 0 ? 'bi-arrow-up-right' : 'bi-arrow-down-right'}"></i> $\${profit.toFixed(2)} (\${percent.toFixed(1)}%)\`;
+            profitDisplay.innerHTML = `<i class="bi ${profit >= 0 ? 'bi-arrow-up-right' : 'bi-arrow-down-right'}"></i> ${profit.toFixed(2)} <%= currencySymbol %> (${percent.toFixed(1)}%)`;
+
             
             if (profit > 0) {
                 profitDisplay.className = 'small fw-bold px-2 py-1 rounded bg-success-light text-success border border-success-subtle align-items-center d-flex gap-1';

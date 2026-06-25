@@ -1,6 +1,5 @@
 <% layout('layouts/main') -%>
 
-<!-- Row 1: KPI Cards -->
 <div class="row g-4 mb-4">
     <div class="col-12 col-md-4">
         <div class="card h-100 p-4 d-flex flex-row align-items-center gap-3">
@@ -17,11 +16,11 @@
     <div class="col-12 col-md-4">
         <div class="card h-100 p-4 d-flex flex-row align-items-center gap-3">
             <div class="rounded bg-success-light text-success d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
-                <i class="bi bi-currency-dollar fs-4"></i>
+                <i class="bi bi-cash-stack fs-4"></i>
             </div>
             <div>
                 <p class="text-muted mb-1 small fw-medium">My Revenue Today</p>
-                <h4 class="mb-0 fw-bold">$<%= stats.todayRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></h4>
+                <h4 class="mb-0 fw-bold"><%= typeof formatMoney === 'function' ? formatMoney(stats.todayRevenue) : stats.todayRevenue %></h4>
             </div>
         </div>
     </div>
@@ -33,13 +32,12 @@
             </div>
             <div>
                 <p class="text-muted mb-1 small fw-medium">Total Sales This Month</p>
-                <h4 class="mb-0 fw-bold">$<%= stats.monthSales.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></h4>
+                <h4 class="mb-0 fw-bold"><%= typeof formatMoney === 'function' ? formatMoney(stats.monthSales) : stats.monthSales %></h4>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Row 2: Large CTA -->
 <div class="row mb-4">
     <div class="col-12">
         <a href="/sales/new" class="btn btn-primary w-100 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm" style="height: 64px; font-size: 18px; border-radius: 12px;">
@@ -49,7 +47,6 @@
     </div>
 </div>
 
-<!-- Row 3: Data Table -->
 <div class="row">
     <div class="col-12">
         <div class="card">
@@ -75,9 +72,9 @@
                                 <tr>
                                     <td class="text-muted"><%= new Date(sale.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %></td>
                                     <td><%= sale.items_count %></td>
-                                    <td class="fw-bold text-success">$<%= sale.total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
-                                    <td>$<%= sale.amount_paid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
-                                    <td>$<%= sale.change_given.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></td>
+                                    <td class="fw-bold text-success"><%= typeof formatMoney === 'function' ? formatMoney(sale.total) : sale.total %></td>
+                                    <td><%= typeof formatMoney === 'function' ? formatMoney(sale.amount_paid) : sale.amount_paid %></td>
+                                    <td><%= typeof formatMoney === 'function' ? formatMoney(sale.change_given) : sale.change_given %></td>
                                     <td class="text-end">
                                         <a href="/receipts/<%= sale.sale_id %>" class="btn btn-sm btn-outline-secondary" title="View Receipt">
                                             <i class="bi bi-receipt"></i>

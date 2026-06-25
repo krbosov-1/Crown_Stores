@@ -7,41 +7,36 @@ const flash = require('connect-flash');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const engine = require('ejs-mate');
-const compression = require('compression'); // إضافة ال
-// ضغط لتسريع النظام
+const compression = require('compression');
 
 const app = express();
 
 // Set trust proxy to fix express-rate-limit behind a reverse proxy
 app.set('trust proxy', 1);
 
-// 1. الأمان: Helmet مع CSP صارم (تم إزالة unsafe-inline من السكربتات)
+// 1. Helmet للحماية
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "https://cdn.jsdelivr.net"], // منع الأكواد المدمجة للحماية من XSS
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://fonts.googleapis.com"],
-            fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net"],
+            connectSrc: ["'self'", "https://cdn.jsdelivr.net"],
             imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net"]
         },
     },
-    crossOriginOpenerPolicy: false,
-    crossOriginEmbedderPolicy: false,
-    crossOriginResourcePolicy: false,
-    xFrameOptions: { action: 'sameorigin' }
 }));
 
-// 2. حماية من الهجمات: Rate Limiting عام لكل النظام
+// 2. Rate Limiting
 const globalLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 دقيقة
-    max: 150, // أقصى عدد طلبات لكل IP
+    windowMs: 15 * 60 * 1000,
+    max: 150,
     message: 'Too many requests from this IP, please try again later.'
 });
 app.use(globalLimiter);
 
-// 3. السرعة: Compression لضغط الملفات
+// 3. Compression
 app.use(compression());
 
 // 4. معالجة البيانات
@@ -51,7 +46,7 @@ app.use(express.urlencoded({ extended: true }));
 // 5. الملفات الثابتة
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 6. إعدادات الجلسة (Session)
+// 6. الجلسة (Session)
 app.use(session({
     secret: process.env.SESSION_SECRET || 'your_super_secret_key_here',
     resave: false,
@@ -59,34 +54,45 @@ app.use(session({
     cookie: { 
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000 // 1 day
+        maxAge: 24 * 60 * 60 * 1000 
     }
 }));
 
-// 7. connect-flash setup
 app.use(flash());
 
-// 8. res.locals middleware
+// 8. الميدل وير الموحد (تم دمج تعريف العملة والـ locals هنا)
 app.use((req, res, next) => {
     res.locals.user = req.session.user || null;
     res.locals.messages = req.flash();
     res.locals.currentPath = req.path;
     res.locals.path = req.path;
-    res.locals.unreadCount = 0; 
+    res.locals.unreadCount = 0;
+
+    // إعدادات العملة
+    const currencySymbol = process.env.CURRENCY_SYMBOL || 'UGX';
+    res.locals.currencySymbol = currencySymbol;
+    res.locals.formatMoney = (amount) => {
+        if (isNaN(amount) || amount === null) amount = 0;
+        const decimals = currencySymbol === 'UGX' ? 0 : 2;
+        return `${parseFloat(amount).toLocaleString('en-US', {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals
+        })} ${currencySymbol}`;
+    };
+    
     next();
 });
 
-// 9. ejs-mate as view engine
+// 9. إعداد الـ View Engine
 app.engine('ejs', engine);
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
-// تشغيل الكاش في حالة الإنتاج لتخفيف الضغط
 if (process.env.NODE_ENV === 'production') {
     app.set('view cache', true);
 }
 
-// 10. All route imports and app.use() mounts
+// 10. الروابط (Routes)
 const authRouter = require('./src/routes/auth');
 const dashboardRouter = require('./src/routes/dashboard');
 const categoriesRouter = require('./src/routes/categories');
@@ -116,9 +122,7 @@ app.use('/profile', profileRouter);
 app.use('/users', usersRouter); 
 
 app.get('/', (req, res) => {
-    if (req.session.user) {
-        return res.redirect('/dashboard');
-    }
+    if (req.session.user) return res.redirect('/dashboard');
     res.redirect('/login');
 });
 
@@ -127,17 +131,22 @@ app.use((req, res, next) => {
     res.status(404).render('pages/errors/404', { message: 'Page Not Found' });
 });
 
-// 12. Global error handler (500)
+// 12. Global error handler
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).render('pages/errors/500', { message: 'Internal Server Error' });
 });
 
-// 13. app.listen() ديناميكي
-module.exports = app;
 if (require.main === module) {
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`Server running on port ${PORT}`);
     });
 }
+
+module.exports = app;
+
+
+app.listen(process.env.PORT || 3000, () => {
+    console.log(`Server is running on port ${process.env.PORT || 3000}`);
+});
