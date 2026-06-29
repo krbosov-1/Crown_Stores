@@ -113,7 +113,6 @@ const processForgotPassword = async (req, res) => {
     }
 };
 
-// التصدير النظيف في مكان واحد بس
 module.exports = {
     showLogin,
     processLogin,

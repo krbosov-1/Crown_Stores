@@ -1,9 +1,8 @@
-const bcrypt = require('bcryptjs'); // أو bcrypt حسب اللي مثبت عندك
+const bcrypt = require('bcryptjs');
 const db = require('../config/db');
 
 exports.getProfilePage = async (req, res) => {
     try {
-        // بنجيب بيانات اليوزر اللي مسجل دخول أسي
         const user = req.session.user || req.user;
         
         if (!user) {
@@ -38,7 +37,6 @@ exports.postChangePassword = async (req, res) => {
     const userId = req.session.user ? req.session.user.id : req.user.id;
 
     try {
-        // 1. التأكد إن كلمات المرور الجديدة متطابقة
         if (newPassword !== confirmPassword) {
             return res.render('pages/profile/password', { 
                 title: 'Change Password', 
@@ -47,14 +45,12 @@ exports.postChangePassword = async (req, res) => {
             });
         }
 
-        // 2. نجيب الباسورد المشفر القديم من الداتا بيس
         const userResult = await db.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
         if (userResult.rows.length === 0) {
             return res.status(404).send('User not found');
         }
         const dbPassword = userResult.rows[0].password_hash;
 
-        // 3. نقارن الباسورد اللي دخلو اليوزر بالباسورد الفعلي
         const isMatch = await bcrypt.compare(currentPassword, dbPassword);
         if (!isMatch) {
             return res.render('pages/profile/password', { 
@@ -64,14 +60,11 @@ exports.postChangePassword = async (req, res) => {
             });
         }
 
-        // 4. تشفير الباسورد الجديد
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-        // 5. حفظ الباسورد الجديد في الداتا بيس
         await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hashedPassword, userId]);
 
-        // 6. إرجاع رسالة نجاح
         res.render('pages/profile/password', { 
             title: 'Change Password', 
             success: 'password changed successfully!', 

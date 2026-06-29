@@ -1,6 +1,5 @@
 <% layout('layouts/main') -%>
 <% 
-    /* 🛡️ منطقة الحماية: تجهيز متغيرات احتياطية عشان الواجهة ما تضرب لو الكنترولر ناقص 🛡️ */
     const currentRole = locals.role || 'manager';
     const currentFilters = locals.filters || { date_from: '', date_to: '', branch_id: '' };
     const branches = locals.allBranches || [];

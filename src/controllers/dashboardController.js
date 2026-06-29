@@ -15,7 +15,6 @@ exports.directorDashboard = async (req, res) => {
         const userId = req.session.user.id;
         const unreadCount = await getUnreadCount(userId);
 
-        // تحسين الأداء: استخدام CURRENT_DATE مباشرة بدون دالة DATE() لتفعيل الفهارس (Indexes)
         const [
             todaySalesRes, 
             inventoryValueRes, 

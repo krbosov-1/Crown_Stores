@@ -16,11 +16,9 @@ pool.on('error', (err, client) => {
 module.exports = {
     query: async (text, params) => {
         try {
-            // الاستعلام بيمر طوالي من غير أي تأخير أو طباعة في التيرمنال
             const res = await pool.query(text, params);
             return res;
         } catch (error) {
-            // بنطبع الخطأ بس عشان الصيانة لو حصلت مشكلة
             console.error('Query error!', { text, error });
             throw error;
         }

@@ -93,7 +93,6 @@ exports.searchProduct = async (req, res) => {
             return res.json([]);
         }
 
-        // استعلام محسن وبدون الـ branch_id من جدول المنتجات وبدون GROUP BY الثقيلة
         const query = `
             SELECT p.id, p.name, p.selling_price as price, i.quantity_available as stock,
                    c.name as category_name,
@@ -140,7 +139,6 @@ exports.createSale = async (req, res) => {
         let totalAmount = 0;
         const insertItems = [];
 
-        // تحسين الأداء: جلب كل بيانات المخزون المطلوبة في استعلام واحد بدل حلقة تكرارية
         const productIds = items.map(item => item.productId);
         const invRes = await client.query(
             `SELECT i.product_id, i.quantity_available, p.name 
@@ -173,14 +171,12 @@ exports.createSale = async (req, res) => {
                 throw new Error(`Insufficient stock for ${invData.name}. Available: ${invData.stock}, Requested: ${quantityInt}`);
             }
 
-            // الخصم من الذاكرة المحلية عشان لو المنتج اتكرر في نفس الفاتورة
             invData.stock -= quantityInt;
 
             const subtotal = quantityInt * priceNum;
             totalAmount += subtotal;
             insertItems.push({ productId, quantity: quantityInt, unitPrice: priceNum, subtotal });
             
-            // تم إزالة UPDATE inventory اليدوي لأن الـ Trigger سيتكفل به تلقائياً
         }
 
         const amtPaidNum = parseFloat(amountPaid);

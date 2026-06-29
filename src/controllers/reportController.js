@@ -92,9 +92,9 @@ exports.index = async (req, res) => {
             revenueChartData = [0, 0];
         }
 
-        // ==========================================
-        // 2. Inventory Report Data (البيانات الناقصة)
-        // ==========================================
+        // ========================
+        // 2. Inventory Report Data
+        // ========================
         let invQuery = `
             SELECT p.name as product_name, c.name as category_name, i.quantity_available, p.reorder_level, 
                    (i.quantity_available * p.cost_price) as stock_value
@@ -128,9 +128,9 @@ exports.index = async (req, res) => {
             return { ...r, status };
         });
 
-        // ==========================================
-        // 3. Procurement Report Data (البيانات الناقصة)
-        // ==========================================
+        // ==========================
+        // 3. Procurement Report Data
+        // ==========================
         let procQuery = `
             SELECT pr.created_at as pr_date, p.name as product_name, s.name as supplier_name, 
                    pr.quantity_received, pr.unit_cost, (pr.quantity_received * pr.unit_cost) as total_cost, u.full_name
@@ -154,9 +154,9 @@ exports.index = async (req, res) => {
             totalProcCost += parseFloat(r.total_cost || 0);
         });
 
-        // ==========================================
-        // 4. Branch Chart Data (للمدير بس)
-        // ==========================================
+        // ====================
+        // 4. Branch Chart Data
+        // ====================
         let branchChartLabels = [];
         let branchChartDataArr = [];
         let branchPerfData = [];
@@ -180,7 +180,6 @@ exports.index = async (req, res) => {
         }
 
 
-        // 🟢 تجميع البيانات وإرسالها للواجهة 🟢
         res.render('pages/reports/index', {
             title: 'Company Reports',
             role: role,
@@ -200,7 +199,6 @@ exports.index = async (req, res) => {
             procSummary: { totalProcurements: procRes.rows.length, totalProcUnits, totalProcCost },
             procurementData: procRes.rows,
             
-            // Cashier (فارغ حالياً لحدي ما تبرمجه أو تخليه كدا)
             cashierData: [],
             
             // Branch
@@ -215,9 +213,9 @@ exports.index = async (req, res) => {
     }
 };
 
-// ==========================================
+// =====================
 // PDF Download Function
-// ==========================================
+// =====================
 exports.downloadPdf = async (req, res) => {
     try {
         const role = req.session.user.role;

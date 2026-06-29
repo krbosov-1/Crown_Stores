@@ -283,13 +283,11 @@ exports.getAdjustPage = async (req, res) => {
     }
 };
 
-// دالة حفظ التعديلات في الداتا بيس
 exports.postAdjustStock = async (req, res) => {
-    const recordId = req.params.id; // ممكن يكون id بتاع الـ inventory أو product_id حسب رابطك
+    const recordId = req.params.id;
     const { new_stock } = req.body;
 
     try {
-        // حنحدث جدول inventory، ونعدل الكمية، ونحدث وقت التعديل لليوم
         const updateQuery = `
             UPDATE inventory 
             SET quantity_available = $1, last_updated = CURRENT_TIMESTAMP 
@@ -300,7 +298,7 @@ exports.postAdjustStock = async (req, res) => {
         res.redirect('/inventory');
     } catch (error) {
         console.error('Error updating stock:', error);
-        res.status(500).send('حصل خطأ أثناء تحديث المخزون.');
+        res.status(500).send('erorr');
     }
 };
 

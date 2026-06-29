@@ -1,7 +1,6 @@
 const bcrypt = require('bcryptjs');
 const db = require('../config/db');
 
-// 1. دالة عرض كل الموظفين (اللي اتمسحت بالغلط 😂)
 exports.getAllUsers = async (req, res) => {
     try {
         const currentUser = req.session.user || req.user;
@@ -39,7 +38,6 @@ exports.getAllUsers = async (req, res) => {
     }
 };
 
-// 2. دالة عرض صفحة الإضافة
 exports.getAddUserPage = async (req, res) => {
     try {
         const currentUser = req.session.user || req.user;
@@ -57,7 +55,6 @@ exports.getAddUserPage = async (req, res) => {
     }
 };
 
-// 3. دالة حفظ الموظف الجديد في الداتا بيس
 exports.postAddUser = async (req, res) => {
     const { full_name, email, username, password, role, branch_id } = req.body;
     
@@ -91,13 +88,11 @@ exports.postAddUser = async (req, res) => {
     }
 };
 
-// 4. دالة عرض صفحة التعديل
 exports.getEditUserPage = async (req, res) => {
     const targetUserId = req.params.id;
     const currentUser = req.session.user || req.user;
 
     try {
-        // نجيب بيانات الموظف اللي دايرين نعدله
         const userResult = await db.query('SELECT * FROM users WHERE id = $1', [targetUserId]);
         
         if (userResult.rows.length === 0) {
@@ -106,10 +101,9 @@ exports.getEditUserPage = async (req, res) => {
 
         const targetUser = userResult.rows[0];
 
-        // حماية هرمية: لو إنت Manager، ما بتقدر تعدل بيانات Director أو Manager تاني!
         if (currentUser.role === 'manager') {
             if (targetUser.role !== 'agent' || targetUser.branch_id !== currentUser.branch_id) {
-                return res.status(403).send('Access denied: You do not have permission to edit this user.'); // رسالة بالإنجليزي عشان تكون واضحة في حالة الخطأ
+                return res.status(403).send('Access denied: You do not have permission to edit this user.');
             }
         }
 
@@ -128,7 +122,6 @@ exports.getEditUserPage = async (req, res) => {
     }
 };
 
-// 5. دالة حفظ التعديلات في الداتا بيس
 exports.postEditUser = async (req, res) => {
     const targetUserId = req.params.id;
     const { full_name, email, username, role, branch_id } = req.body;
